@@ -28,7 +28,6 @@ export interface CategoryStat {
   pctChange: number | null
   avgDaily: number
   avgMonthly: number
-  avgYearly: number
   subcategories: SubcategoryStat[]
 }
 
@@ -42,7 +41,6 @@ export interface SubcategoryStat {
   pctChange: number | null
   avgDaily: number
   avgMonthly: number
-  avgYearly: number
 }
 
 export interface WalletStat {
@@ -110,13 +108,11 @@ export function pctChange(current: number, prev: number): number | null {
   return Math.round(((current - prev) / prev) * 100)
 }
 
-/** Compute averages (daily, monthly, yearly) from a total and days in period */
-export function computeAverages(total: number, daysInPeriod: number) {
-  const avgDaily = Math.round(total / Math.max(daysInPeriod, 1))
+/** Compute averages (daily, monthly) from a monthly total and days in that month */
+export function computeAverages(total: number, daysInMonth: number) {
   return {
-    avgDaily,
-    avgMonthly: Math.round(avgDaily * 30),
-    avgYearly: Math.round(avgDaily * 365)
+    avgDaily: Math.round(total / Math.max(daysInMonth, 1)),
+    avgMonthly: total
   }
 }
 

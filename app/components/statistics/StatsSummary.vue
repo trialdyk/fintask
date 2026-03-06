@@ -147,7 +147,6 @@ const buildHistoryLink = (type: 'income' | 'expense') => {
               <th class="text-left px-4 py-2 font-medium"></th>
               <th class="text-right px-4 py-2 font-medium">Harian</th>
               <th class="text-right px-4 py-2 font-medium">Bulanan</th>
-              <th class="text-right px-4 py-2 font-medium">Tahunan</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -155,13 +154,11 @@ const buildHistoryLink = (type: 'income' | 'expense') => {
               <td class="px-4 py-2.5 text-green-600 dark:text-green-400 font-medium text-xs">Pemasukan</td>
               <td class="px-4 py-2.5 text-right font-mono text-xs text-gray-900 dark:text-white">{{ formatCompact(incomeAvgs.avgDaily) }}</td>
               <td class="px-4 py-2.5 text-right font-mono text-xs text-gray-900 dark:text-white">{{ formatCompact(incomeAvgs.avgMonthly) }}</td>
-              <td class="px-4 py-2.5 text-right font-mono text-xs text-gray-900 dark:text-white">{{ formatCompact(incomeAvgs.avgYearly) }}</td>
             </tr>
             <tr>
               <td class="px-4 py-2.5 text-red-600 dark:text-red-400 font-medium text-xs">Pengeluaran</td>
               <td class="px-4 py-2.5 text-right font-mono text-xs text-gray-900 dark:text-white">{{ formatCompact(expenseAvgs.avgDaily) }}</td>
               <td class="px-4 py-2.5 text-right font-mono text-xs text-gray-900 dark:text-white">{{ formatCompact(expenseAvgs.avgMonthly) }}</td>
-              <td class="px-4 py-2.5 text-right font-mono text-xs text-gray-900 dark:text-white">{{ formatCompact(expenseAvgs.avgYearly) }}</td>
             </tr>
           </tbody>
         </table>

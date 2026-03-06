@@ -200,7 +200,6 @@ const buildCategoryHistoryLink = (catId: number | null) => {
                 <div class="flex gap-4 text-xs">
                   <div><span class="text-gray-400">Harian</span> <span class="font-mono font-semibold text-gray-900 dark:text-white ml-1">{{ formatCompact(cat.avgDaily) }}</span></div>
                   <div><span class="text-gray-400">Bulanan</span> <span class="font-mono font-semibold text-gray-900 dark:text-white ml-1">{{ formatCompact(cat.avgMonthly) }}</span></div>
-                  <div><span class="text-gray-400">Tahunan</span> <span class="font-mono font-semibold text-gray-900 dark:text-white ml-1">{{ formatCompact(cat.avgYearly) }}</span></div>
                 </div>
               </div>
 
