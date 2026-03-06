@@ -48,7 +48,7 @@ const isOpen = ref(false)
 <template>
   <div class="flex min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
     <!-- Sidebar (Desktop) -->
-    <aside class="hidden lg:flex flex-col w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+    <aside class="hidden lg:flex flex-col w-64 fixed inset-y-0 left-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 z-40">
       <!-- Logo / Top -->
       <div class="flex items-center gap-3 mb-8 px-2">
         <div class="w-9 h-9 rounded-lg bg-primary-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary-500/30">F</div>
@@ -98,7 +98,7 @@ const isOpen = ref(false)
     </aside>
 
     <!-- Main Area -->
-    <div class="flex-1 flex flex-col min-w-0">
+    <div class="flex-1 flex flex-col min-w-0 lg:ml-64">
       <!-- Top bar -->
       <header class="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
         <button @click="isOpen = true" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
