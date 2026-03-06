@@ -210,51 +210,54 @@ const groupedTransactions = computed(() => {
 
                 <!-- Daily Items -->
                 <UCard class="divide-y divide-gray-100 dark:divide-gray-800 ring-1 ring-gray-200 dark:ring-gray-800 shadow-sm" :ui="{ body: 'p-0 sm:p-0' }">
-                    <div v-for="tx in txs" :key="tx.id.toString()" class="p-4 sm:px-6 hover:bg-gray-50 dark:hover:bg-slate-900/50 transition-colors group flex items-center justify-between">
+                    <div v-for="tx in txs" :key="tx.id.toString()" class="p-4 sm:px-6 hover:bg-gray-50 dark:hover:bg-slate-900/50 transition-colors group relative">
                         
-                        <div class="flex items-center space-x-4 overflow-hidden">
-                            <!-- Icon -->
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-inner"
-                                 :class="{
-                                    'bg-red-100 text-red-600 dark:bg-red-900/30': tx.type === 'expense',
-                                    'bg-green-100 text-green-600 dark:bg-green-900/30': tx.type === 'income',
-                                    'bg-blue-100 text-blue-600 dark:bg-blue-900/30': tx.type === 'transfer',
-                                    'bg-orange-100 text-orange-600 dark:bg-orange-900/30': tx.type === 'correction'
-                                 }"
-                            >
-                                <span v-if="tx.type === 'correction'" class="text-lg">⚖️</span>
-                                <span v-else-if="tx.type === 'transfer'" class="text-lg">🔁</span>
-                                <span v-else-if="getCategory(tx.category_id)" class="text-lg">{{ getCategory(tx.category_id)?.icon }}</span>
-                                <span v-else class="text-lg">📄</span>
-                            </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            
+                            <!-- Left: Icon & Details -->
+                            <div class="flex items-start sm:items-center gap-3 sm:gap-4 overflow-hidden w-full sm:w-auto">
+                                <!-- Icon -->
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-inner mt-1 sm:mt-0"
+                                     :class="{
+                                        'bg-red-100 text-red-600 dark:bg-red-900/30': tx.type === 'expense',
+                                        'bg-green-100 text-green-600 dark:bg-green-900/30': tx.type === 'income',
+                                        'bg-blue-100 text-blue-600 dark:bg-blue-900/30': tx.type === 'transfer',
+                                        'bg-orange-100 text-orange-600 dark:bg-orange-900/30': tx.type === 'correction'
+                                     }"
+                                >
+                                    <span v-if="tx.type === 'correction'" class="text-lg">⚖️</span>
+                                    <span v-else-if="tx.type === 'transfer'" class="text-lg">🔁</span>
+                                    <span v-else-if="getCategory(tx.category_id)" class="text-lg">{{ getCategory(tx.category_id)?.icon }}</span>
+                                    <span v-else class="text-lg">📄</span>
+                                </div>
 
-                            <!-- Details -->
-                            <div class="min-w-0">
-                                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                    {{ tx.title }} 
-                                    <span v-if="tx.type === 'transfer'" class="font-normal text-gray-500">
-                                        (ke {{ getWallet(transactionsStore.items.find(t => t.linked_transaction_id === tx.linked_transaction_id && t.id !== tx.id)?.wallet_id)?.name }})
-                                    </span>
-                                </p>
-                                <p class="text-xs mt-1.5 flex flex-wrap items-center gap-2">
-                                    <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium ring-1 ring-inset transition-colors" :class="getBadgeColorClasses(getWallet(tx.wallet_id)?.color)">
-                                        <UIcon name="i-heroicons-wallet" class="w-3 h-3" />
-                                        {{ getWallet(tx.wallet_id)?.name }}
-                                    </span>
-                                    <template v-if="getCategory(tx.category_id)">
-                                        <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium ring-1 ring-inset transition-colors" :class="getBadgeColorClasses(getCategory(tx.category_id)?.color)">
-                                            <span>{{ getCategory(tx.category_id)?.name }}</span>
+                                <!-- Details -->
+                                <div class="min-w-0 flex-1 flex flex-col space-y-1.5 sm:space-y-1">
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white break-words pr-8 sm:pr-0 leading-tight mt-0.5 sm:mt-0">
+                                        {{ tx.title }} 
+                                        <span v-if="tx.type === 'transfer'" class="font-normal text-gray-500">
+                                            (ke {{ getWallet(transactionsStore.items.find(t => t.linked_transaction_id === tx.linked_transaction_id && t.id !== tx.id)?.wallet_id)?.name }})
+                                        </span>
+                                    </p>
+                                    
+                                    <!-- Badges Stacked on Mobile, Inline on Desktop -->
+                                    <div class="flex flex-col sm:flex-row gap-1.5 sm:gap-2 mt-1">
+                                        <span class="inline-flex w-max items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset transition-colors" :class="getBadgeColorClasses(getWallet(tx.wallet_id)?.color)">
+                                            <UIcon name="i-heroicons-wallet" class="w-3.5 h-3.5" />
+                                            {{ getWallet(tx.wallet_id)?.name }}
+                                        </span>
+                                        
+                                        <span v-if="getCategory(tx.category_id)" class="inline-flex w-max items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset transition-colors" :class="getBadgeColorClasses(getCategory(tx.category_id)?.color)">
+                                            <span class="truncate">{{ getCategory(tx.category_id)?.name }}</span>
                                             <span v-if="getSubcategory(tx.subcategory_id)" class="opacity-70 font-normal">/ {{ getSubcategory(tx.subcategory_id)?.name }}</span>
                                         </span>
-                                    </template>
-                                </p>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Amounts & Actions -->
-                        <div class="flex items-center gap-4 shrink-0 pl-4">
-                            <div class="text-right">
-                                <p class="font-semibold" 
+                            <!-- Right: Amounts & Actions -->
+                            <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto pl-13 sm:pl-0 mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-gray-100 dark:border-gray-800">
+                                <p class="font-bold text-base" 
                                    :class="{
                                       'text-red-500': tx.type === 'expense',
                                       'text-green-500': tx.type === 'income' || (tx.type === 'correction' && tx.notes?.includes('Ke atas')),
@@ -265,12 +268,15 @@ const groupedTransactions = computed(() => {
                                     {{ tx.type === 'expense' || (tx.type === 'correction' && tx.notes?.includes('Ke bawah')) ? '-' : (tx.type === 'income' || (tx.type === 'correction' && tx.notes?.includes('Ke atas'))) ? '+' : '' }}
                                     {{ formatCurrency(Number(tx.amount), getWallet(tx.wallet_id)?.currency === 'USD' ? 'USD' : 'IDR') }}
                                 </p>
+                                
+                                <!-- Delete Action -->
+                                <!-- On mobile it's an icon on the right, on desktop it reveals on hover -->
+                                <div class="flex sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity ml-4">
+                                    <UButton icon="i-heroicons-trash" size="sm" color="error" variant="soft" @click="confirmDeleteTransaction(tx.id)" aria-label="Hapus transaksi" class="rounded-lg" />
+                                </div>
                             </div>
                             
-                            <!-- Delete Action -->
-                            <div class="flex">
-                                <UButton icon="i-heroicons-trash" size="xs" color="error" variant="ghost" @click="confirmDeleteTransaction(tx.id)" />
-                            </div>
+                            <!-- Absolute Delete Action on absolute top-right for mobile so it's not tucked at bottom? No, bottom right is better and makes a nice card -->
                         </div>
                     </div>
                 </UCard>
