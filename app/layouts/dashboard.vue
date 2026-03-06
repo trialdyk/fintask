@@ -51,7 +51,7 @@ const isOpen = ref(false)
     <aside class="hidden lg:flex flex-col w-64 fixed inset-y-0 left-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 z-40">
       <!-- Logo / Top -->
       <div class="flex items-center gap-3 mb-8 px-2">
-        <div class="w-9 h-9 rounded-lg bg-primary-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary-500/30">F</div>
+        <img src="/favicon.svg" alt="FinTask Logo" class="w-9 h-9 drop-shadow-sm" />
         <h1 class="text-xl font-bold text-gray-900 dark:text-white">FinTask</h1>
       </div>
 
@@ -133,7 +133,7 @@ const isOpen = ref(false)
     <USlideover v-model:open="isOpen" side="left" :ui="{ content: 'w-72' }">
       <template #body>
         <div class="flex items-center gap-3 mb-6">
-          <div class="w-9 h-9 rounded-lg bg-primary-500 flex items-center justify-center text-white font-bold text-lg">F</div>
+          <img src="/favicon.svg" alt="FinTask Logo" class="w-9 h-9 drop-shadow-sm" />
           <h1 class="text-xl font-bold text-gray-900 dark:text-white">FinTask</h1>
         </div>
         <nav class="space-y-1">

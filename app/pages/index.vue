@@ -9,14 +9,7 @@
       
       <!-- Top Branding -->
       <div class="relative z-10 flex items-center space-x-3">
-        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30">
-          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
-            <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
-            <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z" />
-            <path d="M8 15l2 2 4-4" stroke-width="2.5" class="text-emerald-400" />
-          </svg>
-        </div>
+        <img src="/favicon.svg" alt="Fintask Logo" class="w-10 h-10 drop-shadow-md" />
         <span class="text-2xl font-bold text-white tracking-tight">Fintask</span>
       </div>
 
@@ -37,14 +30,7 @@
         
         <!-- Mobile Logo (Hidden on Desktop) -->
         <div class="flex lg:hidden justify-center items-center space-x-3 mb-8">
-          <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/30">
-            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
-              <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
-              <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z" />
-              <path d="M8 15l2 2 4-4" stroke-width="2.5" class="text-emerald-400" />
-            </svg>
-          </div>
+          <img src="/favicon.svg" alt="Fintask Logo" class="w-12 h-12 drop-shadow-md" />
         </div>
 
         <div class="text-center lg:text-left">
