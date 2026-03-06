@@ -1,32 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useTable } from 'spacetimedb/vue'
-import { tables } from '../../../src/module_bindings'
 import { formatCurrency, convertToIDR } from '~/utils/currency'
 
-// Meta
 useHead({ title: 'Dashboard' })
 
-// Database subscriptions  
-const [wallets] = useTable(tables.Wallet)
-const [transactions] = useTable(tables.Transaction)
-const [tasks] = useTable(tables.Task)
-const [txCategories] = useTable(tables.TransactionCategory)
-
-// --- Helper to get the enum tag string ---
-const getTag = (val: any): string => {
-  if (typeof val === 'string') return val.toLowerCase()
-  if (val && typeof val === 'object' && 'tag' in val) return String(val.tag).toLowerCase()
-  return ''
-}
+const walletsStore = useWalletsStore()
+const transactionsStore = useTransactionsStore()
+const tasksStore = useTasksStore()
+const categoriesStore = useCategoriesStore()
+const { getBadgeColorClasses } = useHelpers()
 
 // --- Computed Stats ---
 
 const totalBalance = computed(() => {
-  if (!wallets.value) return 0
-  return wallets.value.reduce((sum, w) => {
-    const currency = getTag(w.currency) || 'IDR'
-    return sum + convertToIDR(Number(w.balance), currency)
+  return walletsStore.items.reduce((sum, w) => {
+    return sum + convertToIDR(w.balance, w.currency || 'IDR')
   }, 0)
 })
 
@@ -34,78 +21,55 @@ const currentMonth = new Date().getMonth()
 const currentYear = new Date().getFullYear()
 
 const thisMonthTransactions = computed(() => {
-  if (!transactions.value) return []
-  return transactions.value.filter(tx => {
-    const txDate = new Date(Number(tx.timestamp.microsSinceUnixEpoch / 1000n))
+  return transactionsStore.items.filter(tx => {
+    const txDate = new Date(tx.timestamp)
     return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear
   })
 })
 
-const monthlyIncome = computed(() => {
-  return thisMonthTransactions.value
-    .filter(tx => getTag(tx.type) === 'income')
-    .reduce((sum, tx) => sum + Number(tx.amount), 0)
-})
+const monthlyIncome = computed(() =>
+  thisMonthTransactions.value
+    .filter(tx => tx.type === 'income')
+    .reduce((sum, tx) => sum + tx.amount, 0)
+)
 
-const monthlyExpense = computed(() => {
-  return thisMonthTransactions.value
-    .filter(tx => getTag(tx.type) === 'expense')
-    .reduce((sum, tx) => sum + Number(tx.amount), 0)
-})
+const monthlyExpense = computed(() =>
+  thisMonthTransactions.value
+    .filter(tx => tx.type === 'expense')
+    .reduce((sum, tx) => sum + tx.amount, 0)
+)
 
 // --- Lists for UI ---
 
-const recentTransactions = computed(() => {
-  if (!transactions.value) return []
-  return [...transactions.value]
-    .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
-    .slice(0, 5)
-})
+const recentTransactions = computed(() => transactionsStore.items.slice(0, 5))
 
-const pendingTasks = computed(() => {
-  if (!tasks.value) return []
-  return tasks.value
-    .filter(t => !t.isCompleted)
+const pendingTasks = computed(() =>
+  tasksStore.incomplete
     .sort((a, b) => {
-      if (a.deadline && b.deadline) return Number(a.deadline) - Number(b.deadline)
+      if (a.deadline && b.deadline) return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
       if (a.deadline) return -1
       if (b.deadline) return 1
-      return Number(b.id) - Number(a.id)
+      return b.id - a.id
     })
     .slice(0, 5)
-})
+)
 
-// Format helpers
-const formatDate = (ts: any) => {
+// --- Helpers ---
+const formatDate = (ts: string | null) => {
   if (!ts) return ''
-  let date: Date
-  if (ts.microsSinceUnixEpoch) {
-    date = new Date(Number(ts.microsSinceUnixEpoch / 1000n))
-  } else {
-    date = new Date(Number(ts))
-  }
-
-  if (isNaN(date.getTime())) return 'Invalid Date'
-
+  const date = new Date(ts)
+  if (isNaN(date.getTime())) return ''
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
 }
 
-const getCategoryIcon = (categoryId?: bigint) => {
-  if (!categoryId || !txCategories.value) return 'i-heroicons-tag'
-  const cat = txCategories.value.find(c => c.id.toString() === categoryId.toString())
+const getCategoryIcon = (categoryId?: number | null) => {
+  const cat = categoriesStore.getTxCategoryById(categoryId)
   return cat?.icon || 'i-heroicons-tag'
 }
 
-const getCategoryColorClasses = (categoryId?: bigint) => {
-  if (!categoryId || !txCategories.value) return getBadgeColorClasses('neutral')
-  const cat = txCategories.value.find(c => c.id.toString() === categoryId.toString())
-  return getBadgeColorClasses(cat?.color)
-}
-
-const getWalletCurrency = (walletId: bigint) => {
-  if (!wallets.value) return 'IDR'
-  const w = wallets.value.find(w => w.id === walletId)
-  return w ? getTag(w.currency).toUpperCase() || 'IDR' : 'IDR'
+const getWalletCurrency = (walletId: number) => {
+  const w = walletsStore.getById(walletId)
+  return w?.currency || 'IDR'
 }
 
 </script>
@@ -176,7 +140,7 @@ const getWalletCurrency = (walletId: bigint) => {
 
           <div v-else class="space-y-3">
              <div v-for="task in pendingTasks" :key="task.id.toString()" class="flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
-                <UCheckbox :model-value="task.isCompleted" disabled />
+                <UCheckbox :model-value="task.is_completed" disabled />
                 <div class="flex-1 min-w-0">
                   <p class="font-medium text-sm text-gray-900 dark:text-white truncate">{{ task.name }}</p>
                   <p v-if="task.deadline" class="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
@@ -184,11 +148,11 @@ const getWalletCurrency = (walletId: bigint) => {
                     Tenggat: {{ formatDate(task.deadline) }}
                   </p>
                 </div>
-                <UBadge v-if="getTag(task.priority)" size="sm" variant="subtle" :color="
-                    getTag(task.priority) === 'high' ? 'error' : 
-                    getTag(task.priority) === 'medium' ? 'warning' : 'success'
+                <UBadge v-if="task.priority" size="sm" variant="subtle" :color="
+                    task.priority === 'high' ? 'error' : 
+                    task.priority === 'medium' ? 'warning' : 'success'
                 " class="capitalize">
-                  {{ getTag(task.priority) }}
+                  {{ task.priority }}
                 </UBadge>
              </div>
           </div>
@@ -212,14 +176,14 @@ const getWalletCurrency = (walletId: bigint) => {
               <div class="flex items-center gap-4">
                 <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-inner"
                      :class="{
-                        'bg-red-100 text-red-600 dark:bg-red-900/30': getTag(tx.type) === 'expense',
-                        'bg-green-100 text-green-600 dark:bg-green-900/30': getTag(tx.type) === 'income',
-                        'bg-blue-100 text-blue-600 dark:bg-blue-900/30': getTag(tx.type) === 'transfer',
-                        'bg-orange-100 text-orange-600 dark:bg-orange-900/30': getTag(tx.type) === 'correction'
+                        'bg-red-100 text-red-600 dark:bg-red-900/30': tx.type === 'expense',
+                        'bg-green-100 text-green-600 dark:bg-green-900/30': tx.type === 'income',
+                        'bg-blue-100 text-blue-600 dark:bg-blue-900/30': tx.type === 'transfer',
+                        'bg-orange-100 text-orange-600 dark:bg-orange-900/30': tx.type === 'correction'
                      }">
-                    <span v-if="getTag(tx.type) === 'correction'" class="text-lg">⚖️</span>
-                    <span v-else-if="getTag(tx.type) === 'transfer'" class="text-lg">🔁</span>
-                    <span v-else-if="getCategoryIcon(tx.categoryId) !== 'i-heroicons-tag'" class="text-lg">{{ getCategoryIcon(tx.categoryId) }}</span>
+                    <span v-if="tx.type === 'correction'" class="text-lg">⚖️</span>
+                    <span v-else-if="tx.type === 'transfer'" class="text-lg">🔁</span>
+                    <span v-else-if="getCategoryIcon(tx.category_id) !== 'i-heroicons-tag'" class="text-lg">{{ getCategoryIcon(tx.category_id) }}</span>
                     <span v-else class="text-lg">📄</span>
                 </div>
                 <div>
@@ -229,15 +193,15 @@ const getWalletCurrency = (walletId: bigint) => {
               </div>
               <div class="text-right">
                 <p class="font-bold text-sm md:text-base" :class="{
-                  'text-green-600 dark:text-green-400': getTag(tx.type) === 'income',
-                  'text-red-600 dark:text-red-400': getTag(tx.type) === 'expense',
-                  'text-blue-600 dark:text-blue-400': getTag(tx.type) === 'transfer',
-                  'text-orange-600 dark:text-orange-400': getTag(tx.type) === 'correction'
+                  'text-green-600 dark:text-green-400': tx.type === 'income',
+                  'text-red-600 dark:text-red-400': tx.type === 'expense',
+                  'text-blue-600 dark:text-blue-400': tx.type === 'transfer',
+                  'text-orange-600 dark:text-orange-400': tx.type === 'correction'
                 }">
-                  {{ (getTag(tx.type) === 'expense' || (getTag(tx.type) === 'correction' && tx.notes?.includes('Ke bawah'))) ? '-' : '+' }} 
-                  {{ formatCurrency(Number(tx.amount), getWalletCurrency(tx.walletId)) }}
+                  {{ (tx.type === 'expense' || (tx.type === 'correction' && tx.notes?.includes('Ke bawah'))) ? '-' : '+' }} 
+                  {{ formatCurrency(tx.amount, getWalletCurrency(tx.wallet_id)) }}
                 </p>
-                <p class="text-xs text-gray-500 capitalize">{{ getTag(tx.type) || 'unknown' }}</p>
+                <p class="text-xs text-gray-500 capitalize">{{ tx.type }}</p>
               </div>
             </div>
           </div>
@@ -256,21 +220,21 @@ const getWalletCurrency = (walletId: bigint) => {
             </div>
           </template>
 
-          <div v-if="wallets.length === 0" class="text-center py-6 text-sm text-gray-500">
+          <div v-if="walletsStore.items.length === 0" class="text-center py-6 text-sm text-gray-500">
             Belum ada dompet.
           </div>
 
           <div v-else class="space-y-4">
-            <div v-for="wallet in wallets" :key="wallet.id.toString()" class="flex items-center justify-between gap-2">
+            <div v-for="wallet in walletsStore.items" :key="wallet.id" class="flex items-center justify-between gap-2">
                <div class="flex items-center gap-3 min-w-0 flex-1">
                  <span class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium ring-1 ring-inset transition-colors shrink-0 max-w-[150px] sm:max-w-[200px]" :class="getBadgeColorClasses(wallet.color)">
                     <span class="text-base leading-none shrink-0">{{ wallet.icon || '💳' }}</span>
                     <span class="truncate">{{ wallet.name }}</span>
                  </span>
-                 <span class="text-xs text-gray-500 capitalize shrink-0 hidden sm:inline-block">{{ getTag(wallet.type) || 'unknown' }}</span>
+                 <span class="text-xs text-gray-500 capitalize shrink-0 hidden sm:inline-block">{{ wallet.type }}</span>
                </div>
                <div class="text-right font-semibold text-sm shrink-0">
-                 {{ formatCurrency(Number(wallet.balance), getTag(wallet.currency) || 'IDR') }}
+                 {{ formatCurrency(wallet.balance, wallet.currency || 'IDR') }}
                </div>
             </div>
           </div>

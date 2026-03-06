@@ -1,70 +1,58 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useTable, useReducer } from 'spacetimedb/vue'
-import { tables, reducers } from '../../../../src/module_bindings'
-import { Timestamp } from 'spacetimedb'
+import { formatCurrency } from '~/utils/currency'
+import type { TransactionType } from '~/types/database.types'
 
 const toast = useAppToast()
-
-// Database Subscriptions
-const [transactions, isTxReady] = useTable(tables.Transaction)
-const [wallets, isWalletReady] = useTable(tables.Wallet)
-const [categories, isCatReady] = useTable(tables.TransactionCategory)
-const [subcategories, isSubReady] = useTable(tables.TransactionSubCategory)
-
-const isReady = computed(() => isTxReady.value && isWalletReady.value && isCatReady.value && isSubReady.value)
+const transactionsStore = useTransactionsStore()
+const walletsStore = useWalletsStore()
+const categoriesStore = useCategoriesStore()
+const { getBadgeColorClasses } = useHelpers()
 
 // -- SLIDEOVER & FORM STATE --
 const isSlideoverOpen = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
-const editingId = ref<bigint | null>(null)
+const editingId = ref<number | null>(null)
 
-// Transaction form model
 const formState = ref({
-    type: 'expense' as 'income' | 'expense' | 'transfer',
+    type: 'expense' as TransactionType,
     title: '',
     amount: 0,
-    walletId: undefined as bigint | undefined,
-    toWalletId: undefined as bigint | undefined, // For transfers
-    categoryId: undefined as bigint | undefined,
-    subCategoryId: undefined as bigint | undefined,
-    date: new Date().toISOString().substring(0, 10), // YYYY-MM-DD
+    walletId: undefined as number | undefined,
+    toWalletId: undefined as number | undefined,
+    categoryId: undefined as number | undefined,
+    subCategoryId: undefined as number | undefined,
+    date: new Date().toISOString().substring(0, 10),
     notes: ''
 })
 
 // Options Mappings
-const walletOptions = computed(() => {
-    return wallets.value?.map(w => ({ name: `${w.icon} ${w.name}`, value: w.id })) || []
-})
+const walletOptions = computed(() =>
+    walletsStore.items.map(w => ({ name: `${w.icon} ${w.name}`, value: w.id }))
+)
 
-const categoryOptions = computed(() => {
-    return categories.value?.filter(c => c.type?.tag?.toLowerCase() === formState.value.type).map(c => ({
+const categoryOptions = computed(() =>
+    categoriesStore.txCategories.filter(c => c.type === formState.value.type).map(c => ({
         name: `${c.icon} ${c.name}`,
         value: c.id
-    })) || []
-})
+    }))
+)
 
 const subcategoryOptions = computed(() => {
     if (!formState.value.categoryId) return []
-    return subcategories.value?.filter(s => s.categoryId === formState.value.categoryId).map(s => ({
+    return categoriesStore.getSubcategoriesForCategory(formState.value.categoryId).map(s => ({
         name: s.icon ? `${s.icon} ${s.name}` : s.name,
         value: s.id
-    })) || []
+    }))
 })
 
-// Reducers
-const createTransaction = useReducer(reducers.createTransaction)
-const updateTransaction = useReducer(reducers.updateTransaction)
-const deleteTxAction = useReducer(reducers.deleteTransaction)
-
-const openQuickAdd = (type: 'income' | 'expense' | 'transfer' = 'expense') => {
+const openQuickAdd = (type: TransactionType = 'expense') => {
     formMode.value = 'create'
     editingId.value = null
     formState.value = {
         type,
         title: '',
         amount: 0,
-        walletId: wallets.value && wallets.value.length > 0 ? wallets.value[0]?.id : undefined,
+        walletId: walletsStore.items.length > 0 ? walletsStore.items[0]?.id : undefined,
         toWalletId: undefined,
         categoryId: undefined,
         subCategoryId: undefined,
@@ -74,108 +62,88 @@ const openQuickAdd = (type: 'income' | 'expense' | 'transfer' = 'expense') => {
     isSlideoverOpen.value = true
 }
 
-const handleSave = () => {
+const saving = ref(false)
+const deleting = ref(false)
+
+const handleSave = async () => {
     if (!formState.value.title) return toast.error('Gagal', 'Judul transaksi harus diisi')
     if (formState.value.amount <= 0) return toast.error('Gagal', 'Nominal harus lebih dari 0')
     if (!formState.value.walletId) return toast.error('Gagal', 'Dompet asal harus dipilih')
-    
+
     if (formState.value.type === 'transfer') {
         if (!formState.value.toWalletId) return toast.error('Gagal', 'Dompet tujuan harus dipilih')
         if (formState.value.walletId === formState.value.toWalletId) return toast.error('Gagal', 'Dompet asal dan tujuan tidak boleh sama')
     }
 
+    saving.value = true
     try {
-        const typeTag = formState.value.type.charAt(0).toUpperCase() + formState.value.type.slice(1) as 'Income' | 'Expense' | 'Transfer' | 'Correction'
-        const payload = {
+        await transactionsStore.create({
             title: formState.value.title,
-            type: { tag: typeTag } as any,
-            amount: BigInt(formState.value.amount),
-            timestamp: Timestamp.fromDate(new Date(formState.value.date)),
-            walletId: formState.value.walletId,
-            categoryId: formState.value.categoryId,
-            subCategoryId: formState.value.subCategoryId,
-            toWalletId: formState.value.toWalletId,
-            notes: formState.value.notes || undefined,
+            type: formState.value.type,
+            amount: formState.value.amount,
+            timestamp: new Date(formState.value.date).toISOString(),
+            wallet_id: formState.value.walletId!,
+            category_id: formState.value.categoryId || null,
+            subcategory_id: formState.value.subCategoryId || null,
+            notes: formState.value.notes || null,
             tags: []
-        }
-
-        if (formMode.value === 'create') {
-            createTransaction(payload)
-            toast.success('Berhasil', 'Transaksi ditambahkan')
-        } else if (editingId.value !== null) {
-            updateTransaction({ id: editingId.value, ...payload })
-            toast.success('Berhasil', 'Transaksi diperbarui')
-        }
+        })
+        toast.success('Berhasil', 'Transaksi ditambahkan')
         isSlideoverOpen.value = false
+        await walletsStore.refresh()
     } catch (e: any) {
-        toast.error('Gagal', e.message)
+        toast.error('Gagal', e.data?.statusMessage || e.message)
+    } finally {
+        saving.value = false
     }
 }
 
 const isDeleteTxModalOpen = ref(false)
-const txToDelete = ref<bigint | null>(null)
+const txToDelete = ref<number | null>(null)
 
-const confirmDeleteTransaction = (id: bigint) => {
+const confirmDeleteTransaction = (id: number) => {
     txToDelete.value = id
     isDeleteTxModalOpen.value = true
 }
 
-const executeDeleteTransaction = () => {
+const executeDeleteTransaction = async () => {
     if (txToDelete.value === null) return
+    deleting.value = true
     try {
-        deleteTxAction({ id: txToDelete.value })
-        toast.success('Berhasil', 'Transaksi dihapus')
+        await transactionsStore.remove(txToDelete.value)
+        toast.success('Berhasil', 'Transaksi dihapus & saldo dikoreksi')
+        await walletsStore.refresh()
     } catch (e: any) {
-        toast.error('Gagal', e.message)
+        toast.error('Gagal', e.data?.statusMessage || e.message)
     } finally {
+        deleting.value = false
         isDeleteTxModalOpen.value = false
         txToDelete.value = null
     }
 }
 
+// ─── Balance check ────────────────────────────────────────────────────
+const selectedWallet = computed(() => formState.value.walletId ? walletsStore.getById(formState.value.walletId) : null)
+const isInsufficientBalance = computed(() => {
+    if (!selectedWallet.value) return false
+    if (formState.value.type !== 'expense' && formState.value.type !== 'transfer') return false
+    return formState.value.amount > selectedWallet.value.balance
+})
 
-const getWallet = (id?: bigint | null) => id ? wallets.value?.find(w => w.id === id) : undefined
-const getCategory = (id?: bigint | null) => id ? categories.value?.find(c => c.id === id) : undefined
-const getSubcategory = (id?: bigint | null) => id ? subcategories.value?.find(s => s.id === id) : undefined
-
-const getBadgeColorClasses = (colorName: string | undefined) => {
-    const c = colorName || 'neutral'
-    const colorMap: Record<string, string> = {
-        neutral: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 ring-slate-200 dark:ring-slate-700',
-        red: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 ring-red-200 dark:ring-red-900',
-        orange: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 ring-orange-200 dark:ring-orange-900',
-        amber: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 ring-amber-200 dark:ring-amber-900',
-        yellow: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400 ring-yellow-200 dark:ring-yellow-900',
-        green: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 ring-green-200 dark:ring-green-900',
-        emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 ring-emerald-200 dark:ring-emerald-900',
-        teal: 'bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400 ring-teal-200 dark:ring-teal-900',
-        cyan: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400 ring-cyan-200 dark:ring-cyan-900',
-        sky: 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400 ring-sky-200 dark:ring-sky-900',
-        blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 ring-blue-200 dark:ring-blue-900',
-        indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 ring-indigo-200 dark:ring-indigo-900',
-        violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400 ring-violet-200 dark:ring-violet-900',
-        purple: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 ring-purple-200 dark:ring-purple-900',
-        pink: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400 ring-pink-200 dark:ring-pink-900',
-    }
-    return colorMap[c] || colorMap.neutral
-}
-
-import { formatCurrency } from '~/utils/currency'
+const getWallet = (id?: number | null) => walletsStore.getById(id ?? undefined)
+const getCategory = (id?: number | null) => categoriesStore.getTxCategoryById(id)
+const getSubcategory = (id?: number | null) => categoriesStore.getTxSubcategoryById(id)
 
 const groupedTransactions = computed(() => {
-    if (!transactions.value) return {}
-    
-    const visibleTxs = transactions.value.filter(tx => {
-        if (tx.type?.tag === 'Income' && tx.linkedTransactionId) return false 
+    const visibleTxs = transactionsStore.items.filter(tx => {
+        if (tx.type === 'income' && tx.linked_transaction_id) return false 
         return true
     })
 
-    const sorted = visibleTxs.sort((a, b) => Number(b.timestamp.microsSinceUnixEpoch - a.timestamp.microsSinceUnixEpoch))
+    const grouped: Record<string, typeof visibleTxs> = {}
     
-    const grouped: Record<string, typeof sorted> = {}
-    
-    sorted.forEach(tx => {
-        const d = new Date(Number(tx.timestamp.microsSinceUnixEpoch / 1000n))
+    visibleTxs.forEach(tx => {
+        const d = new Date(tx.timestamp)
         const dateStr = d.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
         if (!grouped[dateStr]) grouped[dateStr] = []
         grouped[dateStr].push(tx)
@@ -199,7 +167,7 @@ const groupedTransactions = computed(() => {
 
         <!-- Initial Setup Warning -->
         <UAlert 
-            v-if="isReady && wallets && wallets.length === 0"
+            v-if="!transactionsStore.loading && walletsStore.items.length === 0"
             color="warning"
             variant="soft"
             title="Belum ada Dompet"
@@ -209,7 +177,7 @@ const groupedTransactions = computed(() => {
         />
 
         <UAlert 
-            v-if="isReady && wallets && wallets.length > 0 && categories && categories.length === 0"
+            v-if="!transactionsStore.loading && walletsStore.items.length > 0 && categoriesStore.txCategories.length === 0"
             color="info"
             variant="soft"
             title="Belum ada Kategori"
@@ -219,17 +187,17 @@ const groupedTransactions = computed(() => {
         />
 
         <!-- Loading State -->
-        <div v-if="!isReady" class="flex justify-center items-center py-24">
+        <div v-if="transactionsStore.loading" class="flex justify-center items-center py-24">
             <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-gray-400" />
             <span class="ml-2 text-gray-500">Memuat data...</span>
         </div>
 
         <!-- Empty State -->
-        <UCard v-else-if="!transactions || transactions.length === 0" class="text-center py-16">
+        <UCard v-else-if="transactionsStore.items.length === 0" class="text-center py-16">
             <UIcon name="i-heroicons-document-text" class="w-16 h-16 mx-auto text-gray-200 dark:text-gray-700 mb-4" />
             <h3 class="text-xl font-medium text-gray-900 dark:text-white">Buku Catatan Kosong</h3>
             <p class="mt-2 text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">Mulai catat setiap pengeluaran dan pemasukan untuk mengontrol keuangan yang lebih sehat.</p>
-            <UButton v-if="wallets && wallets.length > 0" label="Catat Sekarang" size="lg" icon="i-heroicons-pencil-square" @click="openQuickAdd('expense')" />
+            <UButton v-if="walletsStore.items.length > 0" label="Catat Sekarang" size="lg" icon="i-heroicons-pencil-square" @click="openQuickAdd('expense')" />
         </UCard>
 
         <!-- Transaction List -->
@@ -248,15 +216,15 @@ const groupedTransactions = computed(() => {
                             <!-- Icon -->
                             <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-inner"
                                  :class="{
-                                    'bg-red-100 text-red-600 dark:bg-red-900/30': tx.type?.tag === 'Expense',
-                                    'bg-green-100 text-green-600 dark:bg-green-900/30': tx.type?.tag === 'Income',
-                                    'bg-blue-100 text-blue-600 dark:bg-blue-900/30': tx.type?.tag === 'Transfer',
-                                    'bg-orange-100 text-orange-600 dark:bg-orange-900/30': tx.type?.tag === 'Correction'
+                                    'bg-red-100 text-red-600 dark:bg-red-900/30': tx.type === 'expense',
+                                    'bg-green-100 text-green-600 dark:bg-green-900/30': tx.type === 'income',
+                                    'bg-blue-100 text-blue-600 dark:bg-blue-900/30': tx.type === 'transfer',
+                                    'bg-orange-100 text-orange-600 dark:bg-orange-900/30': tx.type === 'correction'
                                  }"
                             >
-                                <span v-if="tx.type?.tag === 'Correction'" class="text-lg">⚖️</span>
-                                <span v-else-if="tx.type?.tag === 'Transfer'" class="text-lg">🔁</span>
-                                <span v-else-if="getCategory(tx.categoryId!)" class="text-lg">{{ getCategory(tx.categoryId!)?.icon }}</span>
+                                <span v-if="tx.type === 'correction'" class="text-lg">⚖️</span>
+                                <span v-else-if="tx.type === 'transfer'" class="text-lg">🔁</span>
+                                <span v-else-if="getCategory(tx.category_id)" class="text-lg">{{ getCategory(tx.category_id)?.icon }}</span>
                                 <span v-else class="text-lg">📄</span>
                             </div>
 
@@ -264,19 +232,19 @@ const groupedTransactions = computed(() => {
                             <div class="min-w-0">
                                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
                                     {{ tx.title }} 
-                                    <span v-if="tx.type?.tag === 'Transfer'" class="font-normal text-gray-500">
-                                        (ke {{ getWallet(transactions.find(t => t.linkedTransactionId === tx.linkedTransactionId && t.id !== tx.id)?.walletId || 0n)?.name }})
+                                    <span v-if="tx.type === 'transfer'" class="font-normal text-gray-500">
+                                        (ke {{ getWallet(transactionsStore.items.find(t => t.linked_transaction_id === tx.linked_transaction_id && t.id !== tx.id)?.wallet_id)?.name }})
                                     </span>
                                 </p>
                                 <p class="text-xs mt-1.5 flex flex-wrap items-center gap-2">
-                                    <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium ring-1 ring-inset transition-colors" :class="getBadgeColorClasses(getWallet(tx.walletId)?.color)">
+                                    <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium ring-1 ring-inset transition-colors" :class="getBadgeColorClasses(getWallet(tx.wallet_id)?.color)">
                                         <UIcon name="i-heroicons-wallet" class="w-3 h-3" />
-                                        {{ getWallet(tx.walletId)?.name }}
+                                        {{ getWallet(tx.wallet_id)?.name }}
                                     </span>
-                                    <template v-if="getCategory(tx.categoryId!)">
-                                        <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium ring-1 ring-inset transition-colors" :class="getBadgeColorClasses(getCategory(tx.categoryId!)?.color)">
-                                            <span>{{ getCategory(tx.categoryId!)?.name }}</span>
-                                            <span v-if="getSubcategory(tx.subCategoryId!)" class="opacity-70 font-normal">/ {{ getSubcategory(tx.subCategoryId!)?.name }}</span>
+                                    <template v-if="getCategory(tx.category_id)">
+                                        <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium ring-1 ring-inset transition-colors" :class="getBadgeColorClasses(getCategory(tx.category_id)?.color)">
+                                            <span>{{ getCategory(tx.category_id)?.name }}</span>
+                                            <span v-if="getSubcategory(tx.subcategory_id)" class="opacity-70 font-normal">/ {{ getSubcategory(tx.subcategory_id)?.name }}</span>
                                         </span>
                                     </template>
                                 </p>
@@ -288,21 +256,19 @@ const groupedTransactions = computed(() => {
                             <div class="text-right">
                                 <p class="font-semibold" 
                                    :class="{
-                                      'text-red-500': tx.type?.tag === 'Expense',
-                                      'text-green-500': tx.type?.tag === 'Income' || (tx.type?.tag === 'Correction' && tx.notes?.includes('Ke atas')),
-                                      'text-gray-600 dark:text-gray-300': tx.type?.tag === 'Transfer',
-                                      'text-orange-500': tx.type?.tag === 'Correction' && tx.notes?.includes('Ke bawah')
+                                      'text-red-500': tx.type === 'expense',
+                                      'text-green-500': tx.type === 'income' || (tx.type === 'correction' && tx.notes?.includes('Ke atas')),
+                                      'text-gray-600 dark:text-gray-300': tx.type === 'transfer',
+                                      'text-orange-500': tx.type === 'correction' && tx.notes?.includes('Ke bawah')
                                    }"
                                 >
-                                    {{ tx.type?.tag === 'Expense' || (tx.type?.tag === 'Correction' && tx.notes?.includes('Ke bawah')) ? '-' : (tx.type?.tag === 'Income' || (tx.type?.tag === 'Correction' && tx.notes?.includes('Ke atas'))) ? '+' : '' }}
-                                    {{ formatCurrency(Number(tx.amount), getWallet(tx.walletId)?.currency?.tag === 'Usd' ? 'USD' : 'IDR') }}
+                                    {{ tx.type === 'expense' || (tx.type === 'correction' && tx.notes?.includes('Ke bawah')) ? '-' : (tx.type === 'income' || (tx.type === 'correction' && tx.notes?.includes('Ke atas'))) ? '+' : '' }}
+                                    {{ formatCurrency(Number(tx.amount), getWallet(tx.wallet_id)?.currency === 'USD' ? 'USD' : 'IDR') }}
                                 </p>
                             </div>
                             
-                            <!-- Actions (Hover) -->
-                            <div class="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                <!-- Edit not fully implemented for transfers due to complexity, focus on delete for now or basic expense/income edits -->
-                                <UButton v-if="tx.type?.tag !== 'Correction' && tx.type?.tag !== 'Transfer'" icon="i-heroicons-pencil" size="xs" color="neutral" variant="ghost" @click="() => {} /* Implement edit binding */" />
+                            <!-- Delete Action -->
+                            <div class="flex">
                                 <UButton icon="i-heroicons-trash" size="xs" color="error" variant="ghost" @click="confirmDeleteTransaction(tx.id)" />
                             </div>
                         </div>
@@ -335,14 +301,23 @@ const groupedTransactions = computed(() => {
                     </div>
 
                     <!-- Amount Input -->
-                    <div class="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-6 border border-gray-100 dark:border-gray-800">
+                    <div class="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-6 border border-gray-100 dark:border-gray-800" :class="isInsufficientBalance ? 'ring-2 ring-red-500/40' : ''">
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 text-center">
-                            Nominal ({{ formState.walletId ? (getWallet(formState.walletId)?.currency?.tag === 'Usd' ? 'USD' : 'IDR') : 'IDR' }})
+                            Nominal ({{ formState.walletId ? (getWallet(formState.walletId)?.currency === 'USD' ? 'USD' : 'IDR') : 'IDR' }})
                         </label>
                         <UInput v-model.number="formState.amount" type="number" size="xl" class="w-full text-center text-5xl font-bold py-4" variant="none" placeholder="0" autofocus />
                         <p class="text-center text-sm font-medium text-gray-400 mt-2">
-                            {{ formState.amount ? formatCurrency(formState.amount, formState.walletId ? (getWallet(formState.walletId)?.currency?.tag === 'Usd' ? 'USD' : 'IDR') : 'IDR') : formatCurrency(0, formState.walletId ? (getWallet(formState.walletId)?.currency?.tag === 'Usd' ? 'USD' : 'IDR') : 'IDR') }}
+                            {{ formState.amount ? formatCurrency(formState.amount, getWallet(formState.walletId)?.currency || 'IDR') : formatCurrency(0, getWallet(formState.walletId)?.currency || 'IDR') }}
                         </p>
+                        <!-- Wallet balance display -->
+                        <p v-if="selectedWallet" class="text-center text-xs mt-2" :class="isInsufficientBalance ? 'text-red-500 font-semibold' : 'text-gray-400'">
+                            Saldo {{ selectedWallet.name }}: {{ formatCurrency(selectedWallet.balance, selectedWallet.currency) }}
+                        </p>
+                        <!-- Insufficient balance alert -->
+                        <div v-if="isInsufficientBalance" class="mt-3 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg px-3 py-2 text-xs">
+                            <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 shrink-0" />
+                            <span>Nominal melebihi saldo dompet. Transaksi tidak bisa disimpan.</span>
+                        </div>
                     </div>
 
                     <UFormField label="Judul Transaksi" name="title" required>
@@ -383,17 +358,17 @@ const groupedTransactions = computed(() => {
             <template #footer>
                 <div class="flex justify-end w-full gap-3 pt-2">
                     <UButton color="neutral" variant="soft" label="Batal" @click="isSlideoverOpen = false" />
-                    <UButton color="primary" label="Simpan Transaksi" @click="handleSave" />
+                    <UButton color="primary" label="Simpan Transaksi" @click="handleSave" :loading="saving" :disabled="saving || isInsufficientBalance" />
                 </div>
             </template>
         </USlideover>
 
         <!-- Delete Transaction Modal -->
-        <UModal v-model:open="isDeleteTxModalOpen" title="Hapus Transaksi" description="Hapus histori transaksi ini? Saldo dompet terkait akan disesuaikan kembali.">
+        <UModal :dismissible="false" v-model:open="isDeleteTxModalOpen" title="Hapus Transaksi" description="Hapus histori transaksi ini? Saldo dompet terkait akan disesuaikan kembali.">
             <template #footer>
                 <div class="flex justify-end w-full gap-3 p-4">
-                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteTxModalOpen = false" />
-                    <UButton color="error" label="Hapus" @click="executeDeleteTransaction" />
+                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteTxModalOpen = false" :disabled="deleting" />
+                    <UButton color="error" label="Hapus" @click="executeDeleteTransaction" :loading="deleting" :disabled="deleting" />
                 </div>
             </template>
         </UModal>

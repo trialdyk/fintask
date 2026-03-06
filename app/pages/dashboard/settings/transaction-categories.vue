@@ -1,27 +1,20 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useTable, useReducer } from 'spacetimedb/vue'
-import { tables, reducers } from '../../../../src/module_bindings'
+import type { TransactionCategory, TransactionSubcategory } from '~/types/database.types'
 
 const toast = useAppToast()
-
-// Data fetching from SpacetimeDB
-const [categories, isCategoryReady] = useTable(tables.TransactionCategory)
-const [subcategories, isSubReady] = useTable(tables.TransactionSubCategory)
-
-const isReady = computed(() => isCategoryReady.value && isSubReady.value)
+const categoriesStore = useCategoriesStore()
 
 // Filter State
-const activeTab = ref('expense')
+const activeTab = ref<'expense' | 'income' | 'transfer' | 'correction'>('expense')
 
 // Form State (Parent Category)
 const isCategoryModalOpen = ref(false)
 const categoryModalMode = ref<'create' | 'edit'>('create')
-const editingCategoryId = ref<bigint | null>(null)
+const editingCategoryId = ref<number | null>(null)
 
 const categoryForm = ref({
     name: '',
-    type: 'expense',
+    type: 'expense' as 'expense' | 'income' | 'transfer' | 'correction',
     icon: '🍔',
     color: 'red'
 })
@@ -29,8 +22,8 @@ const categoryForm = ref({
 // Form State (Sub Category)
 const isSubModalOpen = ref(false)
 const subModalMode = ref<'create' | 'edit'>('create')
-const editingSubId = ref<bigint | null>(null)
-const targetParentId = ref<bigint | null>(null)
+const editingSubId = ref<number | null>(null)
+const targetParentId = ref<number | null>(null)
 
 const subForm = ref({
     name: '',
@@ -49,6 +42,10 @@ const iconOptions = [
     { name: 'Hiburan', value: '🎬' },
     { name: 'Gaji', value: '💵' },
     { name: 'Investasi', value: '📈' },
+    { name: 'Olahraga', value: '🏋️' },
+    { name: 'Kencan', value: '❤️' },
+    { name: 'Teknologi', value: '💻' },
+    { name: 'Game', value: '🎮' },
     { name: 'Lainnya', value: '📦' }
 ]
 
@@ -70,25 +67,13 @@ const colorOptions = [
     { name: 'Pink', value: 'pink', hex: '#ec4899' }
 ]
 
-// Reducers
-const createTxCategory = useReducer(reducers.createTxCategory)
-const updateTxCategory = useReducer(reducers.updateTxCategory)
-const deleteTxCategory = useReducer(reducers.deleteTxCategory)
-
-const createTxSubcategory = useReducer(reducers.createTxSubcategory)
-const updateTxSubcategory = useReducer(reducers.updateTxSubcategory)
-const deleteTxSubcategory = useReducer(reducers.deleteTxSubcategory)
-
 // Derived Data
-const filteredCategories = computed(() => {
-    if (!categories.value) return []
-    return categories.value.filter(c => c.type?.tag?.toLowerCase() === activeTab.value)
-})
+const filteredCategories = computed(() =>
+    categoriesStore.txCategories.filter(c => c.type === activeTab.value)
+)
 
-const getSubcategories = (parentId: bigint) => {
-    if (!subcategories.value) return []
-    return subcategories.value.filter(s => s.categoryId === parentId)
-}
+const getSubcategories = (parentId: number) =>
+    categoriesStore.getSubcategoriesForCategory(parentId)
 
 // Category Actions
 const openCreateCategory = () => {
@@ -98,54 +83,61 @@ const openCreateCategory = () => {
     isCategoryModalOpen.value = true
 }
 
-const openEditCategory = (category: any) => {
+const openEditCategory = (category: TransactionCategory) => {
     categoryModalMode.value = 'edit'
-    categoryForm.value = { name: category.name, type: category.type?.tag?.toLowerCase() || activeTab.value, icon: category.icon, color: category.color }
+    categoryForm.value = { name: category.name, type: category.type || activeTab.value, icon: category.icon, color: category.color }
     editingCategoryId.value = category.id
     isCategoryModalOpen.value = true
 }
 
-const saveCategory = () => {
+const saving = ref(false)
+const deleting = ref(false)
+
+const saveCategory = async () => {
     if (!categoryForm.value.name) return toast.error('Gagal', 'Nama kategori wajib diisi')
-    
+    saving.value = true
     try {
-        const typeTag = categoryForm.value.type.charAt(0).toUpperCase() + categoryForm.value.type.slice(1) as 'Expense' | 'Income'
+        const payload = { name: categoryForm.value.name, type: categoryForm.value.type, icon: categoryForm.value.icon, color: categoryForm.value.color }
         if (categoryModalMode.value === 'create') {
-            createTxCategory({ ...categoryForm.value, type: { tag: typeTag } as any })
+            await categoriesStore.createTxCategory(payload)
             toast.success('Berhasil', 'Kategori ditambahkan')
         } else if (editingCategoryId.value !== null) {
-            updateTxCategory({ id: editingCategoryId.value, ...categoryForm.value, type: { tag: typeTag } as any })
+            await categoriesStore.updateTxCategory(editingCategoryId.value, payload)
             toast.success('Berhasil', 'Kategori diperbarui')
         }
         isCategoryModalOpen.value = false
     } catch (e: any) {
-        toast.error('Gagal', e.message)
+        toast.error('Gagal', e.data?.statusMessage || e.message)
+    } finally {
+        saving.value = false
     }
 }
 
 const isDeleteCategoryModalOpen = ref(false)
-const categoryToDelete = ref<bigint | null>(null)
+const categoryToDelete = ref<number | null>(null)
 
-const confirmDeleteCategory = (id: bigint) => {
+const confirmDeleteCategory = (id: number) => {
     categoryToDelete.value = id
     isDeleteCategoryModalOpen.value = true
 }
 
-const executeDeleteCategory = () => {
+const executeDeleteCategory = async () => {
     if (categoryToDelete.value === null) return
+    deleting.value = true
     try {
-        deleteTxCategory({ id: categoryToDelete.value })
+        await categoriesStore.removeTxCategory(categoryToDelete.value)
         toast.success('Berhasil', 'Kategori dihapus')
     } catch (e: any) {
-        toast.error('Gagal', e.message)
+        toast.error('Gagal', e.data?.statusMessage || e.message)
     } finally {
+        deleting.value = false
         isDeleteCategoryModalOpen.value = false
         categoryToDelete.value = null
     }
 }
 
 // Subcategory Actions
-const openCreateSub = (parentId: bigint) => {
+const openCreateSub = (parentId: number) => {
     targetParentId.value = parentId
     subModalMode.value = 'create'
     subForm.value = { name: '', icon: '🍽️' }
@@ -153,48 +145,52 @@ const openCreateSub = (parentId: bigint) => {
     isSubModalOpen.value = true
 }
 
-const openEditSub = (sub: any) => {
-    targetParentId.value = sub.categoryId
+const openEditSub = (sub: TransactionSubcategory) => {
+    targetParentId.value = sub.category_id
     subModalMode.value = 'edit'
     subForm.value = { name: sub.name, icon: sub.icon || '🍽️' }
     editingSubId.value = sub.id
     isSubModalOpen.value = true
 }
 
-const saveSub = () => {
+const saveSub = async () => {
     if (!subForm.value.name) return toast.error('Gagal', 'Nama rincian wajib diisi')
     if (targetParentId.value === null) return
-    
+    saving.value = true
     try {
         if (subModalMode.value === 'create') {
-            createTxSubcategory({ categoryId: targetParentId.value, name: subForm.value.name, icon: subForm.value.icon })
+            await categoriesStore.createTxSubcategory({ category_id: targetParentId.value, name: subForm.value.name, icon: subForm.value.icon })
             toast.success('Berhasil', 'Rincian ditambahkan')
         } else if (editingSubId.value !== null) {
-            updateTxSubcategory({ id: editingSubId.value, categoryId: targetParentId.value, name: subForm.value.name, icon: subForm.value.icon })
+            await categoriesStore.updateTxSubcategory(editingSubId.value, { category_id: targetParentId.value, name: subForm.value.name, icon: subForm.value.icon })
             toast.success('Berhasil', 'Rincian diperbarui')
         }
         isSubModalOpen.value = false
     } catch (e: any) {
-        toast.error('Gagal', e.message)
+        toast.error('Gagal', e.data?.statusMessage || e.message)
+    } finally {
+        saving.value = false
     }
 }
 
 const isDeleteSubModalOpen = ref(false)
-const subToDelete = ref<bigint | null>(null)
+const subToDelete = ref<number | null>(null)
 
-const confirmDeleteSub = (id: bigint) => {
+const confirmDeleteSub = (id: number) => {
     subToDelete.value = id
     isDeleteSubModalOpen.value = true
 }
 
-const executeDeleteSub = () => {
+const executeDeleteSub = async () => {
     if (subToDelete.value === null) return
+    deleting.value = true
     try {
-        deleteTxSubcategory({ id: subToDelete.value })
+        await categoriesStore.removeTxSubcategory(subToDelete.value)
         toast.success('Berhasil', 'Rincian dihapus')
     } catch (e: any) {
-        toast.error('Gagal', e.message)
+        toast.error('Gagal', e.data?.statusMessage || e.message)
     } finally {
+        deleting.value = false
         isDeleteSubModalOpen.value = false
         subToDelete.value = null
     }
@@ -237,7 +233,7 @@ const getSubIconOption = computed(() => iconOptions.find(i => i.value === subFor
         </div>
 
         <!-- Loading State -->
-        <div v-if="!isReady" class="flex justify-center items-center py-24">
+        <div v-if="categoriesStore.loading" class="flex justify-center items-center py-24">
             <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-gray-400" />
             <span class="ml-2 text-gray-500">Memuat data...</span>
         </div>
@@ -310,7 +306,7 @@ const getSubIconOption = computed(() => iconOptions.find(i => i.value === subFor
         </div>
 
         <!-- Parent Category Modal -->
-        <UModal v-model:open="isCategoryModalOpen" :title="categoryModalMode === 'create' ? 'Tambah Kategori Utama' : 'Edit Kategori Utama'">
+        <UModal :dismissible="false" v-model:open="isCategoryModalOpen" :title="categoryModalMode === 'create' ? 'Tambah Kategori Utama' : 'Edit Kategori Utama'">
             <template #body>
                 <div class="space-y-4">
                     <UFormField class="w-full" label="Nama Kategori" name="name" required>
@@ -331,8 +327,8 @@ const getSubIconOption = computed(() => iconOptions.find(i => i.value === subFor
 
                         <UFormField label="Warna UI" name="color">
                             <USelectMenu class="w-full" v-model="categoryForm.color" :items="colorOptions" value-key="value" label-key="name">
-                                <template #leading><span class="w-3 h-3 rounded-full shrink-0" :style="{ backgroundColor: getSelectedColorOption ? getSelectedColorOption.hex : 'transparent' }"></span></template>
-                                <template #item-leading="{ item }"><span class="w-3 h-3 rounded-full shrink-0" :style="{ backgroundColor: item ? item.hex : 'transparent' }"></span></template>
+                                <template #leading><span class="w-4 h-4 rounded-full shrink-0" :style="{ backgroundColor: getSelectedColorOption ? getSelectedColorOption.hex : 'transparent' }"></span></template>
+                                <template #item-leading="{ item }"><span class="w-4 h-4 rounded-full shrink-0" :style="{ backgroundColor: item ? item.hex : 'transparent' }"></span></template>
                             </USelectMenu>
                         </UFormField>
                     </div>
@@ -340,14 +336,14 @@ const getSubIconOption = computed(() => iconOptions.find(i => i.value === subFor
             </template>
             <template #footer>
                 <div class="flex justify-end w-full gap-3 p-4">
-                    <UButton color="neutral" variant="ghost" label="Batal" @click="isCategoryModalOpen = false" />
-                    <UButton color="primary" :label="categoryModalMode === 'create' ? 'Simpan' : 'Perbarui'" @click="saveCategory" />
+                    <UButton color="neutral" variant="ghost" label="Batal" @click="isCategoryModalOpen = false" :disabled="saving" />
+                    <UButton color="primary" :label="categoryModalMode === 'create' ? 'Simpan' : 'Perbarui'" @click="saveCategory" :loading="saving" :disabled="saving" />
                 </div>
             </template>
         </UModal>
 
         <!-- Subcategory Modal -->
-        <UModal v-model:open="isSubModalOpen" :title="subModalMode === 'create' ? 'Tambah Rincian Kategori' : 'Edit Rincian'">
+        <UModal :dismissible="false" v-model:open="isSubModalOpen" :title="subModalMode === 'create' ? 'Tambah Rincian Kategori' : 'Edit Rincian'">
             <template #body>
                 <div class="space-y-4">
                     <UFormField class="w-full" label="Nama Rincian" name="name" required>
@@ -364,28 +360,28 @@ const getSubIconOption = computed(() => iconOptions.find(i => i.value === subFor
             </template>
             <template #footer>
                 <div class="flex justify-end w-full gap-3 p-4">
-                    <UButton color="neutral" variant="ghost" label="Batal" @click="isSubModalOpen = false" />
-                    <UButton color="primary" :label="subModalMode === 'create' ? 'Simpan' : 'Perbarui'" @click="saveSub" />
+                    <UButton color="neutral" variant="ghost" label="Batal" @click="isSubModalOpen = false" :disabled="saving" />
+                    <UButton color="primary" :label="subModalMode === 'create' ? 'Simpan' : 'Perbarui'" @click="saveSub" :loading="saving" :disabled="saving" />
                 </div>
             </template>
         </UModal>
 
         <!-- Delete Category Confirmation Modal -->
-        <UModal v-model:open="isDeleteCategoryModalOpen" title="Hapus Kategori Utama" description="Hapus kategori ini beserta seluruh sub-kategorinya? Transaksi terkait akan kehilangan label kategorinya.">
+        <UModal :dismissible="false" v-model:open="isDeleteCategoryModalOpen" title="Hapus Kategori Utama" description="Hapus kategori ini beserta seluruh sub-kategorinya? Transaksi terkait akan kehilangan label kategorinya.">
             <template #footer>
                 <div class="flex justify-end w-full gap-3 p-4">
-                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteCategoryModalOpen = false" />
-                    <UButton color="error" label="Hapus" @click="executeDeleteCategory" />
+                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteCategoryModalOpen = false" :disabled="deleting" />
+                    <UButton color="error" label="Hapus" @click="executeDeleteCategory" :loading="deleting" :disabled="deleting" />
                 </div>
             </template>
         </UModal>
 
         <!-- Delete Subcategory Confirmation Modal -->
-        <UModal v-model:open="isDeleteSubModalOpen" title="Hapus Rincian" description="Hapus sub-kategori ini? Transaksi terkait akan kehilangan label rincian ini.">
+        <UModal :dismissible="false" v-model:open="isDeleteSubModalOpen" title="Hapus Rincian" description="Hapus sub-kategori ini? Transaksi terkait akan kehilangan label rincian ini.">
             <template #footer>
                 <div class="flex justify-end w-full gap-3 p-4">
-                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteSubModalOpen = false" />
-                    <UButton color="error" label="Hapus" @click="executeDeleteSub" />
+                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteSubModalOpen = false" :disabled="deleting" />
+                    <UButton color="error" label="Hapus" @click="executeDeleteSub" :loading="deleting" :disabled="deleting" />
                 </div>
             </template>
         </UModal>

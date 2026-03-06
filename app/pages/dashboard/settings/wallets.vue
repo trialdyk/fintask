@@ -1,37 +1,34 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useTable, useReducer } from 'spacetimedb/vue'
-import { tables, reducers } from '../../../../src/module_bindings'
+import { formatCurrency } from '~/utils/currency'
+import type { Wallet } from '~/types/database.types'
 
 const toast = useAppToast()
-
-// Data fetching from SpacetimeDB
-const [wallets, isReady] = useTable(tables.Wallet)
+const walletsStore = useWalletsStore()
 
 // Form State
 const isModalOpen = ref(false)
 const modalMode = ref<'create' | 'edit'>('create')
-const editingId = ref<bigint | null>(null)
+const editingId = ref<number | null>(null)
 
 const formState = ref({
     name: '',
-    type: 'Cash',
+    type: 'cash' as 'cash' | 'bank' | 'ewallet' | 'credit_card',
     balance: 0,
-    currency: 'Idr',
+    currency: 'IDR' as 'IDR' | 'USD',
     icon: '💵',
     color: 'emerald'
 })
 
 // Options
 const currencyOptions = [
-    { name: 'Rupiah (IDR)', value: 'Idr' },
-    { name: 'US Dollar (USD)', value: 'Usd' }
+    { name: 'Rupiah (IDR)', value: 'IDR' },
+    { name: 'US Dollar (USD)', value: 'USD' }
 ]
 const typeOptions = [
-    { name: 'Tunai', value: 'Cash' },
-    { name: 'Bank', value: 'Bank' },
-    { name: 'E-Wallet', value: 'Ewallet' },
-    { name: 'Kartu Kredit', value: 'CreditCard' }
+    { name: 'Tunai', value: 'cash' },
+    { name: 'Bank', value: 'bank' },
+    { name: 'E-Wallet', value: 'ewallet' },
+    { name: 'Kartu Kredit', value: 'credit_card' }
 ]
 
 const iconOptions = [
@@ -40,12 +37,6 @@ const iconOptions = [
     { name: 'Bank', value: '🏦' },
     { name: 'Ponsel', value: '📱' },
     { name: 'Brankas', value: '🧰' },
-    { name: 'BCA', value: '🔵' },
-    { name: 'Mandiri', value: '🟡' },
-    { name: 'GoPay', value: '🟢' },
-    { name: 'OVO', value: '🟣' },
-    { name: 'ShopeePay', value: '🧡' },
-    { name: 'Dana', value: '🟦' }
 ]
 
 const colorOptions = [
@@ -66,24 +57,20 @@ const colorOptions = [
     { name: 'Pink', value: 'pink', hex: '#ec4899' }
 ]
 
-const createWallet = useReducer(reducers.createWallet)
-const updateWallet = useReducer(reducers.updateWallet)
-const deleteWalletAction = useReducer(reducers.deleteWallet)
-
 const openCreateModal = () => {
     modalMode.value = 'create'
-    formState.value = { name: '', type: 'Cash', balance: 0, currency: 'Idr', icon: '💵', color: 'emerald' }
+    formState.value = { name: '', type: 'cash', balance: 0, currency: 'IDR', icon: '💵', color: 'emerald' }
     editingId.value = null
     isModalOpen.value = true
 }
 
-const openEditModal = (wallet: any) => {
+const openEditModal = (wallet: Wallet) => {
     modalMode.value = 'edit'
     formState.value = { 
         name: wallet.name, 
-        type: wallet.type?.tag || 'Cash', 
-        balance: Number(wallet.balance), 
-        currency: wallet.currency?.tag || 'Idr',
+        type: wallet.type || 'cash', 
+        balance: wallet.balance, 
+        currency: wallet.currency || 'IDR',
         icon: wallet.icon, 
         color: wallet.color 
     }
@@ -91,57 +78,56 @@ const openEditModal = (wallet: any) => {
     isModalOpen.value = true
 }
 
-// Handle Save (Create or Update)
-const handleSave = () => {
+const saving = ref(false)
+const deleting = ref(false)
+
+const handleSave = async () => {
     if (!formState.value.name) {
         toast.error('Gagal', 'Nama dompet harus diisi')
         return
     }
-
+    saving.value = true
     try {
+        const payload = {
+            name: formState.value.name,
+            type: formState.value.type,
+            balance: formState.value.balance,
+            currency: formState.value.currency,
+            icon: formState.value.icon,
+            color: formState.value.color
+        }
         if (modalMode.value === 'create') {
-            createWallet({
-                name: formState.value.name,
-                type: { tag: formState.value.type as any },
-                balance: BigInt(formState.value.balance),
-                currency: { tag: formState.value.currency as any },
-                icon: formState.value.icon,
-                color: formState.value.color
-            })
+            await walletsStore.create(payload)
             toast.success('Berhasil', 'Dompet baru ditambahkan')
-        } else if (modalMode.value === 'edit' && editingId.value !== null) {
-            updateWallet({
-                id: editingId.value,
-                name: formState.value.name,
-                type: { tag: formState.value.type as any },
-                balance: BigInt(formState.value.balance),
-                currency: { tag: formState.value.currency as any },
-                icon: formState.value.icon,
-                color: formState.value.color
-            })
+        } else if (editingId.value !== null) {
+            await walletsStore.update(editingId.value, payload)
             toast.success('Berhasil', 'Dompet diperbarui')
         }
         isModalOpen.value = false
     } catch (err: any) {
-        toast.error('Gagal', err.message || 'Error communicating with database')
+        toast.error('Gagal', err.data?.statusMessage || err.message)
+    } finally {
+        saving.value = false
     }
 }
 const isDeleteModalOpen = ref(false)
-const walletToDelete = ref<bigint | null>(null)
+const walletToDelete = ref<number | null>(null)
 
-const confirmDelete = (id: bigint) => {
+const confirmDelete = (id: number) => {
     walletToDelete.value = id
     isDeleteModalOpen.value = true
 }
 
-const executeDelete = () => {
+const executeDelete = async () => {
     if (walletToDelete.value === null) return
+    deleting.value = true
     try {
-        deleteWalletAction({ id: walletToDelete.value })
+        await walletsStore.remove(walletToDelete.value)
         toast.success('Berhasil', 'Dompet dihapus')
     } catch (err: any) {
-        toast.error('Gagal', err.message || 'Error menghapus dompet')
+        toast.error('Gagal', err.data?.statusMessage || err.message)
     } finally {
+        deleting.value = false
         isDeleteModalOpen.value = false
         walletToDelete.value = null
     }
@@ -150,8 +136,6 @@ const executeDelete = () => {
 // Resolving selected option for display
 const getSelectedColorOption = computed(() => colorOptions.find(c => c.value === formState.value.color))
 const getSelectedIconOption = computed(() => iconOptions.find(i => i.value === formState.value.icon))
-
-import { formatCurrency } from '~/utils/currency'
 </script>
 
 <template>
@@ -166,13 +150,13 @@ import { formatCurrency } from '~/utils/currency'
         </div>
 
         <!-- Loading State -->
-        <div v-if="!isReady" class="flex justify-center items-center py-24">
+        <div v-if="walletsStore.loading" class="flex justify-center items-center py-24">
             <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-gray-400" />
             <span class="ml-2 text-gray-500">Memuat dompet...</span>
         </div>
 
         <!-- Empty State -->
-        <UCard v-else-if="!wallets || wallets.length === 0" class="text-center py-12">
+        <UCard v-else-if="walletsStore.items.length === 0" class="text-center py-12">
             <UIcon name="i-heroicons-wallet" class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Belum ada dompet</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 mb-6">Tambahkan dompet pertamamu untuk mulai melacak keuangan.</p>
@@ -181,15 +165,15 @@ import { formatCurrency } from '~/utils/currency'
 
         <!-- Data Grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-8">
-            <UCard v-for="wallet in wallets" :key="wallet.id.toString()" class="hover:ring-1 ring-primary-500/50 transition-all flex flex-col">
+            <UCard v-for="wallet in walletsStore.items" :key="wallet.id" class="hover:ring-1 ring-primary-500/50 transition-all flex flex-col border-l-4" :style="{ borderLeftColor: colorOptions.find(c => c.value === wallet.color)?.hex || '#64748b' }">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-800" :style="{ color: colorOptions.find(c => c.value === wallet.color)?.hex || '#64748b' }">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center" :style="{ backgroundColor: (colorOptions.find(c => c.value === wallet.color)?.hex || '#64748b') + '20', color: colorOptions.find(c => c.value === wallet.color)?.hex || '#64748b' }">
                             <span class="text-xl">{{ wallet.icon || '💳' }}</span>
                         </div>
                         <div>
                             <h4 class="font-medium text-gray-900 dark:text-white">{{ wallet.name }}</h4>
-                            <p class="text-xs text-gray-500 capitalize">{{ wallet.type?.tag }}</p>
+                            <p class="text-xs text-gray-500 capitalize">{{ wallet.type }}</p>
                         </div>
                     </div>
                     <div class="flex space-x-1">
@@ -199,15 +183,15 @@ import { formatCurrency } from '~/utils/currency'
                 </div>
                 <div class="mt-auto">
                     <p class="text-sm text-gray-500 dark:text-gray-400">Saldo saat ini</p>
-                    <p class="text-2xl font-bold font-mono tracking-tight" :class="wallet.balance < 0n ? 'text-red-500' : 'text-gray-900 dark:text-white'">
-                        {{ formatCurrency(Number(wallet.balance), wallet.currency?.tag === 'Usd' ? 'USD' : 'IDR') }}
+                    <p class="text-2xl font-bold font-mono tracking-tight" :class="wallet.balance < 0 ? 'text-red-500' : 'text-gray-900 dark:text-white'">
+                        {{ formatCurrency(wallet.balance, wallet.currency) }}
                     </p>
                 </div>
             </UCard>
         </div>
 
         <!-- Create/Edit Modal -->
-        <UModal 
+        <UModal :dismissible="false" 
             v-model:open="isModalOpen"
             :title="modalMode === 'create' ? 'Tambah Dompet' : 'Edit Dompet'"
             :description="modalMode === 'edit' ? 'Perubahan saldo akan otomatis dicatat sebagai transaksi Koreksi Saldo.' : ''"
@@ -246,11 +230,11 @@ import { formatCurrency } from '~/utils/currency'
                             name="balance" 
                             required 
                             class="col-span-2 sm:col-span-1"
-                            :help="formState.balance ? formatCurrency(formState.balance, formState.currency === 'Usd' ? 'USD' : 'IDR') : formatCurrency(0, formState.currency === 'Usd' ? 'USD' : 'IDR')"
+                            :help="formState.balance ? formatCurrency(formState.balance, formState.currency) : formatCurrency(0, formState.currency)"
                         >
                             <UInput v-model.number="formState.balance" type="number" class="w-full font-mono">
                                 <template #leading>
-                                    <span class="text-gray-500 sm:text-sm pl-2">{{ formState.currency === 'Idr' ? 'Rp' : '$' }}</span>
+                                    <span class="text-gray-500 sm:text-sm pl-2">{{ formState.currency === 'IDR' ? 'Rp' : '$' }}</span>
                                 </template>
                             </UInput>
                         </UFormField>
@@ -295,19 +279,19 @@ import { formatCurrency } from '~/utils/currency'
             </template>
 
             <template #footer>
-                <div class="flex justify-end gap-3 p-4">
-                    <UButton color="neutral" variant="ghost" label="Batal" @click="isModalOpen = false" />
-                    <UButton color="primary" :label="modalMode === 'create' ? 'Simpan' : 'Perbarui'" @click="handleSave" />
+                <div class="flex justify-end w-full gap-3 p-4">
+                    <UButton color="neutral" variant="ghost" label="Batal" @click="isModalOpen = false" :disabled="saving" />
+                    <UButton color="primary" :label="modalMode === 'create' ? 'Simpan' : 'Perbarui'" @click="handleSave" :loading="saving" :disabled="saving" />
                 </div>
             </template>
         </UModal>
 
         <!-- Delete Confirmation Modal -->
-        <UModal v-model:open="isDeleteModalOpen" title="Hapus Dompet" description="Apakah Anda yakin ingin menghapus dompet ini? Semua riwayat transaksi terkait akan terhapus secara permanen.">
+        <UModal :dismissible="false" v-model:open="isDeleteModalOpen" title="Hapus Dompet" description="Apakah Anda yakin ingin menghapus dompet ini? Semua riwayat transaksi terkait akan terhapus secara permanen.">
             <template #footer>
-                <div class="flex justify-end gap-3">
-                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteModalOpen = false" />
-                    <UButton color="error" label="Hapus" @click="executeDelete" />
+                <div class="flex justify-end w-full gap-3">
+                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteModalOpen = false" :disabled="deleting" />
+                    <UButton color="error" label="Hapus" @click="executeDelete" :loading="deleting" :disabled="deleting" />
                 </div>
             </template>
         </UModal>

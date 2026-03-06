@@ -1,32 +1,34 @@
 # Fintask
 
-A unified personal finance tracker and task management app built with **Nuxt 4**, **Nuxt UI**, and **SpacetimeDB**.
+A unified personal finance tracker and task management app built with **Nuxt 4**, **Nuxt UI**, and **Supabase**.
 
 ## Features
 
 - 💰 **Financial Tracking** — Record income, expenses, transfers, and balance corrections across multiple wallets and currencies (IDR / USD).
 - ✅ **Task Management** — Create, prioritize, and organize daily tasks with categories, deadlines, and tags.
-- 📊 **Statistics & Charts** — Interactive ApexCharts visualizations: monthly trends, category breakdowns, wallet distribution, and top transactions.
+- 📊 **Insights & Analytics** — Interactive ApexCharts visualizations: monthly trends, category & subcategory breakdowns, wallet balance distribution, and side-by-side month comparisons with auto-generated text insights.
+- 🗂️ **Transaction History** — Detailed transaction log with advanced filtering (wallet, type, category, subcategory, date range) and pagination.
 - 🌗 **Dark Mode** — Full dark mode support across all pages and charts.
-- 🔐 **Authentication** — OIDC-based login via SpacetimeDB Auth.
+- 🔐 **Authentication** — Secure login and session management via Supabase Auth.
 
 ## Tech Stack
 
-| Layer    | Technology                                                 |
-| -------- | ---------------------------------------------------------- |
-| Frontend | [Nuxt 4](https://nuxt.com) + [Vue 3](https://vuejs.org)    |
-| UI       | [Nuxt UI v4](https://ui.nuxt.com)                          |
-| Styling  | [Tailwind CSS v4](https://tailwindcss.com)                 |
-| Database | [SpacetimeDB](https://spacetimedb.com) (TypeScript SDK)    |
-| Charts   | [ApexCharts](https://apexcharts.com) + vue3-apexcharts     |
-| Auth     | [oidc-client-ts](https://github.com/authts/oidc-client-ts) |
-| State    | [Pinia](https://pinia.vuejs.org)                           |
-| Runtime  | [Bun](https://bun.sh) / Node.js                            |
+| Layer    | Technology                                              |
+| -------- | ------------------------------------------------------- |
+| Frontend | [Nuxt 4](https://nuxt.com) + [Vue 3](https://vuejs.org) |
+| UI       | [Nuxt UI v4](https://ui.nuxt.com)                       |
+| Styling  | [Tailwind CSS v4](https://tailwindcss.com)              |
+| Database | [Supabase](https://supabase.com) (PostgreSQL)           |
+| Backend  | Nuxt Server Routes (Nitro)                              |
+| Charts   | [ApexCharts](https://apexcharts.com) + vue3-apexcharts  |
+| Auth     | [@nuxtjs/supabase](https://supabase.nuxtjs.org/)        |
+| State    | [Pinia](https://pinia.vuejs.org)                        |
+| Runtime  | [Bun](https://bun.sh) / Node.js                         |
 
 ## Prerequisites
 
 - [Bun](https://bun.sh) (recommended) or Node.js ≥ 18
-- [SpacetimeDB CLI](https://spacetimedb.com/install) (`spacetime` command)
+- A [Supabase](https://supabase.com) project database
 
 ## Getting Started
 
@@ -40,29 +42,19 @@ bun install
 
 ### 2. Configure environment
 
-Copy the example env file and fill in your values:
+Copy the example env file and fill in your Supabase credentials:
 
 ```bash
 cp .env.example .env
 ```
 
 ```env
-VITE_SPACETIMEDB_DB_NAME=your-db-name
-VITE_SPACETIMEDB_HOST=https://maincloud.spacetimedb.com
-VITE_SPACETIME_CLIENT_ID=your-client-id
+# Supabase
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_KEY=your-anon-key
 ```
 
-### 3. Start SpacetimeDB (local development)
-
-```bash
-# Publish the module to your local SpacetimeDB instance
-spacetime publish --module-path spacetimedb --server local
-
-# Start the local SpacetimeDB server
-spacetime dev
-```
-
-### 4. Start the Nuxt dev server
+### 3. Start the Nuxt dev server
 
 ```bash
 bun dev
@@ -72,14 +64,11 @@ The app will be available at **http://localhost:5173**.
 
 ## Scripts
 
-| Command                           | Description                              |
-| --------------------------------- | ---------------------------------------- |
-| `bun dev`                         | Start development server                 |
-| `bun run build`                   | Build for production                     |
-| `bun run preview`                 | Preview production build                 |
-| `bun run spacetime:generate`      | Generate TypeScript bindings from schema |
-| `bun run spacetime:publish`       | Publish module to SpacetimeDB maincloud  |
-| `bun run spacetime:publish:local` | Publish module to local SpacetimeDB      |
+| Command           | Description              |
+| ----------------- | ------------------------ |
+| `bun dev`         | Start development server |
+| `bun run build`   | Build for production     |
+| `bun run preview` | Preview production build |
 
 ## Project Structure
 
@@ -87,7 +76,7 @@ The app will be available at **http://localhost:5173**.
 fintask/
 ├── app/
 │   ├── components/       # Vue components (statistics/, etc.)
-│   ├── composables/      # Shared composables (useStatistics, etc.)
+│   ├── composables/      # Shared composables (useInsights, etc.)
 │   ├── layouts/          # App layouts (dashboard.vue)
 │   ├── pages/            # File-based routing
 │   │   ├── index.vue     # Login / landing page
@@ -95,10 +84,9 @@ fintask/
 │   ├── plugins/          # Nuxt plugins (apexcharts, etc.)
 │   ├── stores/           # Pinia stores (auth)
 │   └── utils/            # Utility functions (currency, etc.)
-├── spacetimedb/
-│   └── src/              # SpacetimeDB module (schema & reducers)
-├── src/
-│   └── module_bindings/  # Auto-generated SpacetimeDB bindings
+├── server/
+│   ├── api/              # API endpoints for CRUD operations (Supabase)
+│   └── utils/            # Server utilities (supabase client, text, etc.)
 ├── public/               # Static assets (favicon.svg)
 ├── nuxt.config.ts
 └── package.json

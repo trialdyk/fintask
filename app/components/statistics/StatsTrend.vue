@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { getTag, formatCompact } from '#imports'
+import type { Transaction } from '~/types/database.types'
+
+const { formatCompact, getHexColor } = useHelpers()
 
 const props = defineProps<{
-  filteredTx: readonly any[]
+  filteredTx: readonly Transaction[]
 }>()
 
 const monthlyTrend = computed(() => {
@@ -10,14 +12,13 @@ const monthlyTrend = computed(() => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des']
 
   props.filteredTx.forEach(tx => {
-    const d = new Date(Number(tx.timestamp.microsSinceUnixEpoch / 1000n))
+    const d = new Date(tx.timestamp)
     const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`
     const label = `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
     if (!map.has(key)) map.set(key, { income: 0, expense: 0, label })
     const entry = map.get(key)!
-    const tag = getTag(tx.type)
-    if (tag === 'income') entry.income += Number(tx.amount)
-    else if (tag === 'expense') entry.expense += Number(tx.amount)
+    if (tx.type === 'income') entry.income += tx.amount
+    else if (tx.type === 'expense') entry.expense += tx.amount
   })
 
   const sorted = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
@@ -28,8 +29,6 @@ const series = computed(() => [
   { name: 'Pemasukan', data: monthlyTrend.value.map(m => m.income) },
   { name: 'Pengeluaran', data: monthlyTrend.value.map(m => m.expense) }
 ])
-
-import { getHexColor } from '#imports'
 
 const colorMode = useColorMode()
 

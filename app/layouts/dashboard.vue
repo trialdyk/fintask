@@ -1,308 +1,165 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { useLocalStorage, useColorMode } from '@vueuse/core'
-import { useAuthStore } from '~/stores/auth'
-import { useAppConfig } from '#imports'
-import type { DropdownMenuItem } from '@nuxt/ui'
+const authStore = useAuthStore()
+const tasksStore = useTasksStore()
+const { getBadgeColorClasses } = useHelpers()
 
 const route = useRoute()
-const authStore = useAuthStore()
 const colorMode = useColorMode()
-const appConfig = useAppConfig()
-import { useTable } from 'spacetimedb/vue'
-import { tables } from '../../src/module_bindings'
 
-const [tasks] = useTable(tables.Task)
-const incompleteTasksCount = computed(() => {
-    return tasks.value ? tasks.value.filter(t => !t.isCompleted).length : 0
+// Fetch core data on layout mount
+onMounted(async () => {
+  await Promise.all([
+    useWalletsStore().fetchAll(),
+    useTransactionsStore().fetchAll(),
+    tasksStore.fetchAll(),
+    useCategoriesStore().fetchAll(),
+  ])
 })
 
-// Computed variables for Auth
-const user = computed(() => {
-    if (!authStore.oidcUser) {
-        return {
-            name: 'Guest',
-            avatar: { src: undefined, alt: 'Guest' },
-        }
-    }
-    return {
-        name: authStore.oidcUser.profile.name || authStore.oidcUser.profile.preferred_username || 'Pengguna Fintask',
-        avatar: {
-            src: authStore.oidcUser.profile.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authStore.oidcUser.profile.email || 'fintask'}`,
-            alt: authStore.oidcUser.profile.name || 'Pengguna Fintask',
-        },
-    }
+const isDarkMode = computed({
+  get: () => colorMode.preference === 'dark',
+  set: (v: boolean) => { colorMode.preference = v ? 'dark' : 'light' }
 })
 
-const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
-const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
+const userDisplayName = computed(() =>
+  authStore.user?.user_metadata?.full_name || authStore.user?.email || 'Pengguna'
+)
+const userAvatar = computed(() =>
+  authStore.user?.user_metadata?.avatar_url || ''
+)
 
-// Color mapping for chips
-const colorMap: Record<string, string> = {
-    red: '#ef4444',
-    orange: '#f97316',
-    amber: '#f59e0b',
-    yellow: '#eab308',
-    lime: '#84cc16',
-    green: '#22c55e',
-    emerald: '#10b981',
-    teal: '#14b8a6',
-    cyan: '#06b6d4',
-    sky: '#0ea5e9',
-    blue: '#3b82f6',
-    indigo: '#6366f1',
-    violet: '#8b5cf6',
-    purple: '#a855f7',
-    fuchsia: '#d946ef',
-    pink: '#ec4899',
-    rose: '#f43f5e',
-    slate: '#64748b',
-    gray: '#6b7280',
-    zinc: '#71717a',
-    neutral: '#737373',
-    stone: '#78716c',
-    'old-neutral': '#737373'
-}
+const menuItems = [
+  { label: 'Dashboard', icon: 'i-heroicons-squares-2x2', to: '/dashboard' },
+  { label: 'Transaksi', icon: 'i-heroicons-banknotes', to: '/dashboard/transactions' },
+  { label: 'Tugas', icon: 'i-heroicons-clipboard-document-check', to: '/dashboard/tasks' },
+  { label: 'Insight', icon: 'i-heroicons-light-bulb', to: '/dashboard/insights' },
+  { label: 'Riwayat', icon: 'i-heroicons-clock', to: '/dashboard/history' },
+]
 
-// Helper to manually close popovers/tooltips on route change
-const closePopovers = () => {
-  document.dispatchEvent(new Event('mousedown'))
-  document.dispatchEvent(new Event('mouseup'))
-}
+const settingsItems = [
+  { label: 'Dompet', icon: 'i-heroicons-wallet', to: '/dashboard/settings/wallets' },
+  { label: 'Kategori Transaksi', icon: 'i-heroicons-rectangle-group', to: '/dashboard/settings/transaction-categories' },
+  { label: 'Kategori Tugas', icon: 'i-heroicons-tag', to: '/dashboard/settings/task-category' },
+]
 
-// Check current routes
-const isInTransactionRoute = computed(() => route.path.startsWith('/dashboard/transactions'))
-const isInTaskRoute = computed(() => route.path.startsWith('/dashboard/tasks'))
-const isInSettingsRoute = computed(() => route.path.startsWith('/dashboard/settings'))
-
-const collapsed = useLocalStorage('fintask_sidebar_collapsed', false)
-
-// Sidebar navigation items
-const navigation = computed(() => [
-  {
-    label: 'Dashboard',
-    icon: 'i-heroicons-home',
-    to: '/dashboard'
-  },
-  {
-    label: 'Transaksi',
-    icon: 'i-heroicons-banknotes',
-    to: '/dashboard/transactions',
-    active: isInTransactionRoute.value,
-  },
-  {
-    label: 'Statistik',
-    icon: 'i-heroicons-chart-bar-square',
-    to: '/dashboard/statistics'
-  },
-  {
-    label: 'Tugas Harian',
-    icon: 'i-heroicons-clipboard-document-check',
-    to: '/dashboard/tasks',
-    active: isInTaskRoute.value,
-    badge: incompleteTasksCount.value > 0 ? String(incompleteTasksCount.value) : undefined
-  },
-  {
-    label: 'Pengaturan',
-    icon: 'i-heroicons-cog-8-tooth',
-    active: isInSettingsRoute.value,
-    defaultOpen: !collapsed.value && isInSettingsRoute.value,
-    onSelect: () => { if (collapsed.value) closePopovers() },
-    children: [
-      {
-        label: 'Dompet & Saldo',
-        icon: 'i-heroicons-wallet',
-        to: '/dashboard/settings/wallets'
-      },
-      {
-        label: 'Kategori Keuangan',
-        icon: 'i-heroicons-rectangle-group',
-        to: '/dashboard/settings/transaction-categories'
-      },
-      {
-        label: 'Kategori Tugas',
-        icon: 'i-heroicons-tag',
-        to: '/dashboard/settings/task-category'
-      },
-    ]
-  }
-])
-
-// Profile Dropdown Menu Items
-const profileMenuItems = computed<DropdownMenuItem[][]>(() => {
-    const sections: DropdownMenuItem[][] = []
-
-    // User label
-    sections.push([{
-        type: 'label',
-        label: user.value.name,
-        avatar: user.value.avatar,
-    }])
-
-    // Profil link
-    sections.push([{
-        label: 'Profil',
-        icon: 'i-lucide-user',
-        to: '/dashboard/settings/profile',
-    }])
-
-    // Theme section
-    sections.push([{
-        label: 'Tema',
-        icon: 'i-lucide-palette',
-        children: [{
-            label: 'Primary',
-            slot: 'chip',
-            chip: appConfig.ui.colors.primary,
-            content: {
-                align: 'center',
-                collisionPadding: 16,
-            },
-            children: colors.map(color => ({
-                label: color,
-                chip: color,
-                slot: 'chip',
-                checked: appConfig.ui.colors.primary === color,
-                type: 'checkbox',
-                onSelect: (e: Event) => {
-                    e.preventDefault()
-                    appConfig.ui.colors.primary = color
-                },
-            })),
-        }, {
-            label: 'Neutral',
-            slot: 'chip',
-            chip: appConfig.ui.colors.neutral === 'neutral' ? 'old-neutral' : appConfig.ui.colors.neutral,
-            content: {
-                align: 'end',
-                collisionPadding: 16,
-            },
-            children: neutrals.map(color => ({
-                label: color,
-                chip: color === 'neutral' ? 'old-neutral' : color,
-                slot: 'chip',
-                type: 'checkbox',
-                checked: appConfig.ui.colors.neutral === color,
-                onSelect: (e: Event) => {
-                    e.preventDefault()
-                    appConfig.ui.colors.neutral = color
-                },
-            })),
-        }],
-    }, {
-        label: 'Tampilan',
-        icon: 'i-lucide-sun-moon',
-        children: [{
-            label: 'Light',
-            icon: 'i-lucide-sun',
-            type: 'checkbox',
-            checked: colorMode.value === 'light',
-            onSelect(e: Event) {
-                e.preventDefault();
-                (colorMode as any).preference = 'light'
-            },
-        }, {
-            label: 'Dark',
-            icon: 'i-lucide-moon',
-            type: 'checkbox',
-            checked: colorMode.value === 'dark',
-            onSelect(e: Event) {
-                e.preventDefault();
-                (colorMode as any).preference = 'dark'
-            },
-        }],
-    }])
-
-    // Logout
-    sections.push([{
-        label: 'Keluar',
-        icon: 'i-lucide-log-out',
-        color: 'error',
-        onSelect: async () => {
-            await authStore.logout()
-        },
-    }])
-
-    return sections
-})
+const isOpen = ref(false)
 </script>
 
 <template>
-  <UDashboardGroup>
-    <!-- Sidebar (always dark) -->
-    <UDashboardSidebar collapsible v-model:collapsed="collapsed" class="dark sidebar-force-dark">
-      <template #header>
-        <NuxtLink to="/dashboard" class="flex items-center gap-2 px-2">
-          <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 shrink-0">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
-              <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
-              <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z" />
-              <path d="M8 15l2 2 4-4" stroke-width="2.5" class="text-emerald-400" />
-            </svg>
-          </div>
-          <span v-if="!collapsed" class="text-xl font-bold text-white">Fintask</span>
+  <div class="flex min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+    <!-- Sidebar (Desktop) -->
+    <aside class="hidden lg:flex flex-col w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+      <!-- Logo / Top -->
+      <div class="flex items-center gap-3 mb-8 px-2">
+        <div class="w-9 h-9 rounded-lg bg-primary-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary-500/30">F</div>
+        <h1 class="text-xl font-bold text-gray-900 dark:text-white">FinTask</h1>
+      </div>
+
+      <!-- Nav -->
+      <nav class="flex-1 space-y-1">
+        <NuxtLink v-for="item in menuItems" :key="item.to" :to="item.to"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+          :class="route.path === item.to
+            ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 shadow-sm'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+        >
+          <UIcon :name="item.icon" class="w-5 h-5 shrink-0" />
+          {{ item.label }}
         </NuxtLink>
-      </template>
 
-      <!-- Nuxt UI handles orientation and collapsed props -->
-      <UNavigationMenu :items="navigation" :collapsed="collapsed" orientation="vertical" tooltip popover />
-
-      <template #footer>
-        <div class="mt-auto w-full pt-4 space-y-2">
-            <USeparator />
-            
-            <UDropdownMenu
-                :items="profileMenuItems"
-                :content="{ align: 'center', collisionPadding: 12 }"
-                :ui="{ content: collapsed ? 'w-48' : 'w-(--reka-dropdown-menu-trigger-width)' }"
-            >
-                <UButton
-                    :avatar="user.avatar as any"
-                    :label="collapsed ? undefined : user.name"
-                    :trailing-icon="collapsed ? undefined : 'i-lucide-chevrons-up-down'"
-                    color="neutral"
-                    variant="ghost"
-                    block
-                    :square="collapsed"
-                    class="data-[state=open]:bg-elevated"
-                    :ui="{ trailingIcon: 'text-dimmed' }"
-                />
-
-                <template #chip-leading="{ item }">
-                    <div class="inline-flex items-center justify-center shrink-0 size-5">
-                        <span
-                            class="rounded-full ring-1 ring-white/20 size-2.5"
-                            :style="{ backgroundColor: colorMap[(item as any).chip] }"
-                        />
-                    </div>
-                </template>
-            </UDropdownMenu>
+        <div class="pt-4 pb-2 px-3">
+          <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Pengaturan</p>
         </div>
-      </template>
-    </UDashboardSidebar>
+        <NuxtLink v-for="item in settingsItems" :key="item.to" :to="item.to"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+          :class="route.path === item.to
+            ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 shadow-sm'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+        >
+          <UIcon :name="item.icon" class="w-5 h-5 shrink-0" />
+          {{ item.label }}
+        </NuxtLink>
+      </nav>
 
-    <!-- Main Content Panel -->
-    <UDashboardPanel grow class="bg-white dark:bg-slate-950">
-      <!-- Navbar -->
-      <UDashboardNavbar>
-        <template #left>
+      <!-- Footer -->
+      <div class="mt-auto pt-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
+        <!-- Task Counter -->
+        <div v-if="tasksStore.incompleteCount > 0" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-medium">
+          <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4" />
+          {{ tasksStore.incompleteCount }} tugas belum selesai
+        </div>
+        <!-- Dark Mode Toggle -->
+        <button @click="isDarkMode = !isDarkMode"
+          class="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <UIcon :name="isDarkMode ? 'i-heroicons-moon' : 'i-heroicons-sun'" class="w-4 h-4" />
+          {{ isDarkMode ? 'Mode Gelap' : 'Mode Terang' }}
+        </button>
+      </div>
+    </aside>
 
-          <UButton
-            :icon="collapsed ? 'i-lucide-panel-left-open' : 'i-lucide-panel-left-close'"
-            variant="ghost"
-            color="neutral"
-            @click="collapsed = !collapsed"
-            class="hidden lg:flex"
-          />
-        </template>
-      </UDashboardNavbar>
+    <!-- Main Area -->
+    <div class="flex-1 flex flex-col min-w-0">
+      <!-- Top bar -->
+      <header class="sticky top-0 z-30 flex items-center justify-between h-16 px-4 sm:px-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
+        <button @click="isOpen = true" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+          <UIcon name="i-heroicons-bars-3" class="w-5 h-5" />
+        </button>
+        <div class="hidden lg:block" /> <!-- spacer -->
+
+        <div class="flex items-center gap-3">
+          <button @click="isDarkMode = !isDarkMode" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden">
+            <UIcon :name="isDarkMode ? 'i-heroicons-moon' : 'i-heroicons-sun'" class="w-5 h-5" />
+          </button>
+
+          <UDropdownMenu :items="[[{ label: 'Keluar', icon: 'i-heroicons-arrow-right-on-rectangle', click: authStore.logout }]]">
+            <button class="flex items-center gap-2">
+              <img v-if="userAvatar" :src="userAvatar" class="w-8 h-8 rounded-full ring-2 ring-primary-500/20" />
+              <div v-else class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 font-bold text-sm">
+                {{ userDisplayName.charAt(0).toUpperCase() }}
+              </div>
+              <span class="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300 max-w-[120px] truncate">{{ userDisplayName }}</span>
+            </button>
+          </UDropdownMenu>
+        </div>
+      </header>
 
       <!-- Page Content -->
-      <div class="p-6 overflow-y-scroll" :class="{ 'table-black-text-global': true }">
+      <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
         <slot />
-      </div>
-    </UDashboardPanel>
-  </UDashboardGroup>
+      </main>
+    </div>
+
+    <!-- Mobile Drawer -->
+    <USlideover v-model:open="isOpen" side="left" :ui="{ content: 'w-72' }">
+      <template #body>
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-9 h-9 rounded-lg bg-primary-500 flex items-center justify-center text-white font-bold text-lg">F</div>
+          <h1 class="text-xl font-bold text-gray-900 dark:text-white">FinTask</h1>
+        </div>
+        <nav class="space-y-1">
+          <NuxtLink v-for="item in menuItems" :key="item.to" :to="item.to" @click="isOpen = false"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+            :class="route.path === item.to
+              ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+          >
+            <UIcon :name="item.icon" class="w-5 h-5 shrink-0" />
+            {{ item.label }}
+          </NuxtLink>
+          <div class="pt-4 pb-2 px-3">
+            <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Pengaturan</p>
+          </div>
+          <NuxtLink v-for="item in settingsItems" :key="item.to" :to="item.to" @click="isOpen = false"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+            :class="route.path === item.to
+              ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
+          >
+            <UIcon :name="item.icon" class="w-5 h-5 shrink-0" />
+            {{ item.label }}
+          </NuxtLink>
+        </nav>
+      </template>
+    </USlideover>
+  </div>
 </template>

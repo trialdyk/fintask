@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useTable, useReducer } from 'spacetimedb/vue'
-import { tables, reducers } from '../../../../src/module_bindings'
+import type { TaskCategory } from '~/types/database.types'
 
 const toast = useAppToast()
-
-// Data fetching from SpacetimeDB
-const [categories, isReady] = useTable(tables.TaskCategory)
+const categoriesStore = useCategoriesStore()
 
 // Form State
 const isModalOpen = ref(false)
 const modalMode = ref<'create' | 'edit'>('create')
-const editingId = ref<bigint | null>(null)
+const editingId = ref<number | null>(null)
 
 const formState = ref({
     name: '',
@@ -53,10 +49,6 @@ const colorOptions = [
     { name: 'Pink', value: 'pink', hex: '#ec4899' }
 ]
 
-const createTaskCategory = useReducer(reducers.createTaskCategory)
-const updateTaskCategory = useReducer(reducers.updateTaskCategory)
-const deleteTaskCategoryAction = useReducer(reducers.deleteTaskCategory)
-
 const openCreateModal = () => {
     modalMode.value = 'create'
     formState.value = { name: '', icon: '💼', color: 'neutral' }
@@ -64,59 +56,57 @@ const openCreateModal = () => {
     isModalOpen.value = true
 }
 
-const openEditModal = (category: any) => {
+const openEditModal = (category: TaskCategory) => {
     modalMode.value = 'edit'
     formState.value = { name: category.name, icon: category.icon, color: category.color }
     editingId.value = category.id
     isModalOpen.value = true
 }
 
-// Handle Save (Create or Update)
-const handleSave = () => {
+const saving = ref(false)
+const deleting = ref(false)
+
+const handleSave = async () => {
     if (!formState.value.name) {
         toast.error('Gagal', 'Nama kategori harus diisi')
         return
     }
-
+    saving.value = true
     try {
+        const payload = { name: formState.value.name, icon: formState.value.icon, color: formState.value.color }
         if (modalMode.value === 'create') {
-            createTaskCategory({
-                name: formState.value.name,
-                icon: formState.value.icon,
-                color: formState.value.color
-            })
+            await categoriesStore.createTaskCategory(payload)
             toast.success('Berhasil', 'Kategori baru ditambahkan')
-        } else if (modalMode.value === 'edit' && editingId.value !== null) {
-            updateTaskCategory({
-                id: editingId.value,
-                name: formState.value.name,
-                icon: formState.value.icon,
-                color: formState.value.color
-            })
+        } else if (editingId.value !== null) {
+            await categoriesStore.updateTaskCategory(editingId.value, payload)
             toast.success('Berhasil', 'Kategori diperbarui')
         }
         isModalOpen.value = false
     } catch (err: any) {
-        toast.error('Gagal', err.message || 'Error communicating with database')
+        toast.error('Gagal', err.data?.statusMessage || err.message)
+    } finally {
+        saving.value = false
     }
 }
 
 const isDeleteModalOpen = ref(false)
-const categoryToDelete = ref<bigint | null>(null)
+const categoryToDelete = ref<number | null>(null)
 
-const confirmDelete = (id: bigint) => {
+const confirmDelete = (id: number) => {
     categoryToDelete.value = id
     isDeleteModalOpen.value = true
 }
 
-const executeDelete = () => {
+const executeDelete = async () => {
     if (categoryToDelete.value === null) return
+    deleting.value = true
     try {
-        deleteTaskCategoryAction({ id: categoryToDelete.value })
+        await categoriesStore.removeTaskCategory(categoryToDelete.value)
         toast.success('Berhasil', 'Kategori dihapus')
     } catch (err: any) {
-        toast.error('Gagal', err.message || 'Error menghapus kategori')
+        toast.error('Gagal', err.data?.statusMessage || err.message)
     } finally {
+        deleting.value = false
         isDeleteModalOpen.value = false
         categoryToDelete.value = null
     }
@@ -140,13 +130,13 @@ const getSelectedIconOption = computed(() => iconOptions.find(i => i.value === f
         </div>
 
         <!-- Loading State -->
-        <div v-if="!isReady" class="flex justify-center items-center py-24">
+        <div v-if="categoriesStore.loading" class="flex justify-center items-center py-24">
             <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 animate-spin text-gray-400" />
             <span class="ml-2 text-gray-500">Memuat kategori...</span>
         </div>
 
         <!-- Empty State -->
-        <UCard v-else-if="!categories || categories.length === 0" class="text-center py-12">
+        <UCard v-else-if="categoriesStore.taskCategories.length === 0" class="text-center py-12">
             <UIcon name="i-heroicons-square-3-stack-3d" class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">Belum ada kategori</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 mb-6">Buat kategori pertamamu untuk mulai mengorganisir tugas.</p>
@@ -154,7 +144,7 @@ const getSelectedIconOption = computed(() => iconOptions.find(i => i.value === f
         </UCard>
 
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-8">
-            <UCard v-for="category in categories" :key="category.id.toString()" class="hover:ring-1 ring-primary-500/50 transition-all">
+            <UCard v-for="category in categoriesStore.taskCategories" :key="category.id" class="hover:ring-1 ring-primary-500/50 transition-all">
                 <div class="flex items-start justify-between">
                     <div class="flex items-center space-x-3">
                                 <div class="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-800" :style="{ color: colorOptions.find(c => c.value === category.color)?.hex || '#64748b' }">
@@ -173,7 +163,7 @@ const getSelectedIconOption = computed(() => iconOptions.find(i => i.value === f
         </div>
 
         <!-- Create/Edit Modal -->
-        <UModal 
+        <UModal :dismissible="false" 
             v-model:open="isModalOpen"
             :title="modalMode === 'create' ? 'Tambah Kategori' : 'Edit Kategori'"
         >
@@ -184,13 +174,14 @@ const getSelectedIconOption = computed(() => iconOptions.find(i => i.value === f
                     </UFormField>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <UFormField label="Ikon" name="icon">
+                        <UFormField label="Ikon" name="icon" class="min-w-0">
                             <USelectMenu 
                                 v-model="formState.icon" 
                                 :items="iconOptions" 
                                 value-key="value" 
                                 label-key="name"
                                 class="w-full"
+                                :ui="{ content: 'min-w-[var(--reka-popper-anchor-width)]' }"
                             >
                                 <template #leading>
                                     <span class="text-lg w-5 h-5 flex items-center justify-center">{{ getSelectedIconOption ? getSelectedIconOption.value : '' }}</span>
@@ -202,20 +193,21 @@ const getSelectedIconOption = computed(() => iconOptions.find(i => i.value === f
                             </USelectMenu>
                         </UFormField>
 
-                        <UFormField label="Warna Label" name="color">
+                        <UFormField label="Warna Label" name="color" class="min-w-0">
                             <USelectMenu 
                                 v-model="formState.color" 
                                 :items="colorOptions" 
                                 value-key="value" 
                                 label-key="name"
                                 class="w-full"
+                                :ui="{ content: 'min-w-[var(--reka-popper-anchor-width)]' }"
                             >
                                 <template #leading>
-                                    <span class="w-3 h-3 rounded-full shrink-0" :style="{ backgroundColor: getSelectedColorOption ? getSelectedColorOption.hex : 'transparent' }"></span>
+                                    <span class="w-4 h-4 rounded-full shrink-0" :style="{ backgroundColor: getSelectedColorOption ? getSelectedColorOption.hex : 'transparent' }"></span>
                                 </template>
                                 <!-- Show color dot in select options dropdown -->
                                 <template #item-leading="{ item }">
-                                    <span class="w-3 h-3 rounded-full shrink-0" :style="{ backgroundColor: item ? item.hex : 'transparent' }"></span>
+                                    <span class="w-4 h-4 rounded-full shrink-0" :style="{ backgroundColor: item ? item.hex : 'transparent' }"></span>
                                 </template>
                             </USelectMenu>
                         </UFormField>
@@ -224,19 +216,19 @@ const getSelectedIconOption = computed(() => iconOptions.find(i => i.value === f
             </template>
 
             <template #footer>
-                <div class="flex justify-end gap-3 p-4">
-                    <UButton color="neutral" variant="ghost" label="Batal" @click="isModalOpen = false" />
-                    <UButton color="primary" :label="modalMode === 'create' ? 'Simpan' : 'Perbarui'" @click="handleSave" />
+                <div class="flex justify-end w-full gap-3 p-4">
+                    <UButton color="neutral" variant="ghost" label="Batal" @click="isModalOpen = false" :disabled="saving" />
+                    <UButton color="primary" :label="modalMode === 'create' ? 'Simpan' : 'Perbarui'" @click="handleSave" :loading="saving" :disabled="saving" />
                 </div>
             </template>
         </UModal>
 
         <!-- Delete Confirmation Modal -->
-        <UModal v-model:open="isDeleteModalOpen" title="Hapus Kategori" description="Anda yakin ingin menghapus kategori ini? Tugas yang terhubung mungkin akan kehilangan referensi kategori.">
+        <UModal :dismissible="false" v-model:open="isDeleteModalOpen" title="Hapus Kategori" description="Anda yakin ingin menghapus kategori ini? Tugas yang terhubung mungkin akan kehilangan referensi kategori.">
             <template #footer>
-                <div class="flex justify-end gap-3">
-                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteModalOpen = false" />
-                    <UButton color="error" label="Hapus" @click="executeDelete" />
+                <div class="flex justify-end w-full gap-3">
+                    <UButton color="neutral" variant="ghost" label="Batal" @click="isDeleteModalOpen = false" :disabled="deleting" />
+                    <UButton color="error" label="Hapus" @click="executeDelete" :loading="deleting" :disabled="deleting" />
                 </div>
             </template>
         </UModal>
