@@ -1,6 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="background-color: #6366f1; border-radius: 6px;">
-  <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
-  <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
-  <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z" />
-  <path d="M8 15l2 2 4-4" stroke-width="2.5" stroke="#34d399" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Background Gradient: Indigo to Violet for a premium modern feel -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#4338ca" />
+    </linearGradient>
+    
+    <!-- Secondary Gradient for the Checkmark: Vibrant Teal/Emerald -->
+    <linearGradient id="checkGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <!-- Deep shadow for the white shapes -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+    
+    <!-- Lighter shadow for the checkmark to float above -->
+    <filter id="lightShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- App Icon Base: Squircle with 22.5% rounding -->
+  <rect width="512" height="512" rx="115" fill="url(#bg)" />
+
+  <!-- The "F" (Finance) created with bold rounded strokes -->
+  <path d="M 324 164 L 204 164 L 204 348 M 204 256 L 268 256"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="52"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        filter="url(#shadow)" />
+
+  <!-- The "Checkmark" (Task) swooping over the bottom right -->
+  <path d="M 250 310 L 310 370 L 420 235" 
+        fill="none" 
+        stroke="url(#checkGlow)" 
+        stroke-width="56" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        filter="url(#lightShadow)" />
 </svg>
