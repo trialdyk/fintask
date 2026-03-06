@@ -1,0 +1,2 @@
+﻿app/pages/dashboard/index.vue(4,35): error TS2307: Cannot find module '../composables/useSpacetimeDb' or its corresponding type declarations.
+app/pages/dashboard/index.vue(5,69): error TS2307: Cannot find module '../module_bindings' or its corresponding type declarations.

@@ -1,0 +1,22 @@
+﻿app/pages/dashboard/index.vue(4,35): error TS2307: Cannot find module '~/composables/useSpacetimeDb' or its corresponding type declarations.
+app/pages/dashboard/index.vue(5,69): error TS2307: Cannot find module '~/module_bindings' or its corresponding type declarations.
+app/pages/dashboard/index.vue(19,32): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(19,37): error TS7006: Parameter 'w' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(26,36): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(34,13): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(35,14): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(35,19): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(40,13): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(41,14): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(41,19): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(54,13): error TS7006: Parameter 't' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(55,12): error TS7006: Parameter 'a' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(55,15): error TS7006: Parameter 'b' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(72,39): error TS7006: Parameter 'c' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(78,39): error TS7006: Parameter 'c' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(83,32): error TS7006: Parameter 'w' implicitly has an 'any' type.
+app/pages/dashboard/index.vue(148,40): error TS2322: Type '"gray"' is not assignable to type '"error" | "primary" | "secondary" | "success" | "info" | "warning" | "neutral" | undefined'.
+app/pages/dashboard/index.vue(188,40): error TS2322: Type '"gray"' is not assignable to type '"error" | "primary" | "secondary" | "success" | "info" | "warning" | "neutral" | undefined'.
+app/pages/dashboard/index.vue(206,137): error TS2322: Type '"red" | "orange" | "green"' is not assignable to type '"error" | "primary" | "secondary" | "success" | "info" | "warning" | "neutral" | undefined'.
+  Type '"red"' is not assignable to type '"error" | "primary" | "secondary" | "success" | "info" | "warning" | "neutral" | undefined'.
+app/pages/dashboard/index.vue(225,40): error TS2322: Type '"gray"' is not assignable to type '"error" | "primary" | "secondary" | "success" | "info" | "warning" | "neutral" | undefined'.

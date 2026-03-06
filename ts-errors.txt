@@ -1,0 +1,2 @@
+﻿app/pages/dashboard/transactions/index.vue(317,64): error TS2345: Argument of type 'bigint | undefined' is not assignable to parameter of type 'bigint'.
+  Type 'undefined' is not assignable to type 'bigint'.
