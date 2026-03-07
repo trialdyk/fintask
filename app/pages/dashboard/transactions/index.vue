@@ -6,7 +6,7 @@ const toast = useAppToast()
 const transactionsStore = useTransactionsStore()
 const walletsStore = useWalletsStore()
 const categoriesStore = useCategoriesStore()
-const { getBadgeColorClasses } = useHelpers()
+const { getBadgeColorClasses, getLocalDateString } = useHelpers()
 
 // -- SLIDEOVER & FORM STATE --
 const isSlideoverOpen = ref(false)
@@ -21,7 +21,7 @@ const formState = ref({
     toWalletId: undefined as number | undefined,
     categoryId: undefined as number | undefined,
     subCategoryId: undefined as number | undefined,
-    date: new Date().toISOString().substring(0, 10),
+    date: getLocalDateString(),
     notes: ''
 })
 
@@ -56,7 +56,7 @@ const openQuickAdd = (type: TransactionType = 'expense') => {
         toWalletId: undefined,
         categoryId: undefined,
         subCategoryId: undefined,
-        date: new Date().toISOString().substring(0, 10),
+        date: getLocalDateString(),
         notes: ''
     }
     isSlideoverOpen.value = true
@@ -81,7 +81,7 @@ const handleSave = async () => {
             title: formState.value.title,
             type: formState.value.type,
             amount: formState.value.amount,
-            timestamp: new Date(formState.value.date).toISOString(),
+            timestamp: new Date(formState.value.date + 'T00:00:00').toISOString(),
             wallet_id: formState.value.walletId!,
             category_id: formState.value.categoryId || null,
             subcategory_id: formState.value.subCategoryId || null,
@@ -134,19 +134,34 @@ const getWallet = (id?: number | null) => walletsStore.getById(id ?? undefined)
 const getCategory = (id?: number | null) => categoriesStore.getTxCategoryById(id)
 const getSubcategory = (id?: number | null) => categoriesStore.getTxSubcategoryById(id)
 
+const formatDateHeader = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-') as [string, string, string]
+    const date = new Date(Number(y), Number(m) - 1, Number(d))
+    const diffDays = Math.round((new Date(new Date().setHours(0,0,0,0)).getTime() - date.getTime()) / 86400000)
+    if (diffDays === 0) return 'Hari ini'
+    if (diffDays === 1) return 'Kemarin'
+    return date.toLocaleDateString('id-ID', { weekday: 'long' })
+}
+
+const formatDateSubHeader = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-') as [string, string, string]
+    return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 const groupedTransactions = computed(() => {
     const visibleTxs = transactionsStore.items.filter(tx => {
         if (tx.type === 'income' && tx.linked_transaction_id) return false 
         return true
     })
 
+    const sortedTxs = [...visibleTxs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     const grouped: Record<string, typeof visibleTxs> = {}
     
-    visibleTxs.forEach(tx => {
+    sortedTxs.forEach(tx => {
         const d = new Date(tx.timestamp)
-        const dateStr = d.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-        if (!grouped[dateStr]) grouped[dateStr] = []
-        grouped[dateStr].push(tx)
+        const dateKey = getLocalDateString(d)
+        if (!grouped[dateKey]) grouped[dateKey] = []
+        grouped[dateKey].push(tx)
     })
     
     return grouped
@@ -204,8 +219,9 @@ const groupedTransactions = computed(() => {
         <div v-else class="space-y-8 pb-12">
             <div v-for="(txs, dateKey) in groupedTransactions" :key="dateKey">
                 <!-- Date Header -->
-                <div class="sticky top-0 z-10 bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm py-2 px-1 mb-2 border-b border-gray-100 dark:border-gray-800">
-                    <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ dateKey }}</h3>
+                <div class="sticky top-0 z-10 bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm py-2 px-1 mb-2 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ formatDateHeader(dateKey) }}</h3>
+                    <span class="text-xs font-medium text-gray-400">{{ formatDateSubHeader(dateKey) }}</span>
                 </div>
 
                 <!-- Daily Items -->

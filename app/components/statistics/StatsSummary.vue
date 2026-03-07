@@ -3,7 +3,7 @@ import type { Transaction } from '~/types/database.types'
 import { formatCurrency } from '~/utils/currency'
 import { type MonthRange, filterTxByRange, computeTotals, pctChange, computeAverages } from '~/composables/useInsights'
 
-const { formatCompact } = useHelpers()
+const { formatCompact, getLocalDateString } = useHelpers()
 
 const props = defineProps<{
   filteredTx: readonly Transaction[]
@@ -40,8 +40,8 @@ const expenseAvgs = computed(() => computeAverages(totals.value.expense, props.c
 
 // Drill down navigation
 const buildHistoryLink = (type: 'income' | 'expense') => {
-  const from = props.currentRange.start.toISOString().substring(0, 10)
-  const to = props.currentRange.end.toISOString().substring(0, 10)
+  const from = getLocalDateString(props.currentRange.start)
+  const to = getLocalDateString(props.currentRange.end)
   return `/dashboard/history?type=${type}&dateFrom=${from}&dateTo=${to}`
 }
 </script>

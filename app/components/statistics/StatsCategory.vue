@@ -3,7 +3,7 @@ import type { Transaction, TransactionCategory, TransactionSubcategory } from '~
 import { formatCurrency } from '~/utils/currency'
 import { type MonthRange, type CategoryStat, filterTxByRange, computeAverages, pctChange } from '~/composables/useInsights'
 
-const { formatCompact, getHexColor } = useHelpers()
+const { formatCompact, getHexColor, getLocalDateString } = useHelpers()
 const { getCategoryBreakdown } = useInsights()
 
 const props = defineProps<{
@@ -93,8 +93,8 @@ const subDonutOptions = computed(() => {
 })
 
 const buildCategoryHistoryLink = (catId: number | null) => {
-  const from = props.currentRange.start.toISOString().substring(0, 10)
-  const to = props.currentRange.end.toISOString().substring(0, 10)
+  const from = getLocalDateString(props.currentRange.start)
+  const to = getLocalDateString(props.currentRange.end)
   return `/dashboard/history?type=${categoryTab.value}&category=${catId || ''}&dateFrom=${from}&dateTo=${to}`
 }
 </script>

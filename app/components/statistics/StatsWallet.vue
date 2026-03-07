@@ -3,7 +3,7 @@ import type { Transaction, TransactionCategory, Wallet } from '~/types/database.
 import { formatCurrency } from '~/utils/currency'
 import { type MonthRange, filterTxByRange, pctChange } from '~/composables/useInsights'
 
-const { formatCompact, getHexColor, getBadgeColorClasses } = useHelpers()
+const { formatCompact, getHexColor, getBadgeColorClasses, getLocalDateString } = useHelpers()
 const { getWalletStats } = useInsights()
 
 const props = defineProps<{
@@ -56,8 +56,8 @@ const pieOptions = computed(() => ({
 }))
 
 const buildWalletHistoryLink = (walletId: number) => {
-  const from = props.currentRange.start.toISOString().substring(0, 10)
-  const to = props.currentRange.end.toISOString().substring(0, 10)
+  const from = getLocalDateString(props.currentRange.start)
+  const to = getLocalDateString(props.currentRange.end)
   return `/dashboard/history?wallet=${walletId}&dateFrom=${from}&dateTo=${to}`
 }
 </script>

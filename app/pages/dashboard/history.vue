@@ -7,6 +7,7 @@ useHead({ title: 'Riwayat Transaksi' })
 const transactionsStore = useTransactionsStore()
 const walletsStore = useWalletsStore()
 const categoriesStore = useCategoriesStore()
+const { getHexColor, getLocalDateString } = useHelpers()
 
 // ─── Filters ──────────────────────────────────────────────────────────
 const filterWallet = ref<number | undefined>(undefined)
@@ -16,9 +17,9 @@ const filterType = ref<string | undefined>(undefined)
 
 const today = new Date()
 const filterDateFrom = ref<string>(
-  new Date(today.getFullYear(), today.getMonth(), 1).toISOString().substring(0, 10)
+  getLocalDateString(new Date(today.getFullYear(), today.getMonth(), 1))
 )
-const filterDateTo = ref<string>(today.toISOString().substring(0, 10))
+const filterDateTo = ref<string>(getLocalDateString(today))
 
 const searchQuery = ref('')
 
@@ -124,7 +125,6 @@ const paginatedTransactions = computed(() => {
 })
 
 // ─── Helpers ──────────────────────────────────────────────────────────
-const { getHexColor } = useHelpers()
 
 const getWalletName = (id: number) => walletsStore.getById(id)?.name || '-'
 const getWalletIcon = (id: number) => walletsStore.getById(id)?.icon || '💳'
@@ -172,8 +172,8 @@ const clearFilters = () => {
   filterSubcategory.value = undefined
   filterType.value = undefined
   searchQuery.value = ''
-  filterDateFrom.value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().substring(0, 10)
-  filterDateTo.value = today.toISOString().substring(0, 10)
+  filterDateFrom.value = getLocalDateString(new Date(today.getFullYear(), today.getMonth(), 1))
+  filterDateTo.value = getLocalDateString(today)
 }
 
 const hasActiveFilters = computed(() =>
