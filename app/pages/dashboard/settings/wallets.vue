@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/currency'
+import { ICON_OPTIONS, COLOR_OPTIONS } from '~/utils/options'
 import type { Wallet } from '~/types/database.types'
 
 const toast = useAppToast()
@@ -31,31 +32,8 @@ const typeOptions = [
     { name: 'Kartu Kredit', value: 'credit_card' }
 ]
 
-const iconOptions = [
-    { name: 'Tunai', value: '💵' },
-    { name: 'Dompet', value: '💳' },
-    { name: 'Bank', value: '🏦' },
-    { name: 'Ponsel', value: '📱' },
-    { name: 'Brankas', value: '🧰' },
-]
-
-const colorOptions = [
-    { name: 'Neutral', value: 'neutral', hex: '#64748b' },
-    { name: 'Red', value: 'red', hex: '#ef4444' },
-    { name: 'Orange', value: 'orange', hex: '#f97316' },
-    { name: 'Amber', value: 'amber', hex: '#f59e0b' },
-    { name: 'Yellow', value: 'yellow', hex: '#eab308' },
-    { name: 'Green', value: 'green', hex: '#22c55e' },
-    { name: 'Emerald', value: 'emerald', hex: '#10b981' },
-    { name: 'Teal', value: 'teal', hex: '#14b8a6' },
-    { name: 'Cyan', value: 'cyan', hex: '#06b6d4' },
-    { name: 'Sky', value: 'sky', hex: '#0ea5e9' },
-    { name: 'Blue', value: 'blue', hex: '#3b82f6' },
-    { name: 'Indigo', value: 'indigo', hex: '#6366f1' },
-    { name: 'Violet', value: 'violet', hex: '#8b5cf6' },
-    { name: 'Purple', value: 'purple', hex: '#a855f7' },
-    { name: 'Pink', value: 'pink', hex: '#ec4899' }
-]
+const iconOptions = ICON_OPTIONS
+const colorOptions = COLOR_OPTIONS
 
 const openCreateModal = () => {
     modalMode.value = 'create'
@@ -248,6 +226,7 @@ const getSelectedIconOption = computed(() => iconOptions.find(i => i.value === f
                                 value-key="value" 
                                 label-key="name"
                                 class="w-full"
+                                searchable
                             >
                                 <template #leading>
                                     <span class="text-lg w-5 h-5 flex items-center justify-center">{{ getSelectedIconOption ? getSelectedIconOption.value : '' }}</span>

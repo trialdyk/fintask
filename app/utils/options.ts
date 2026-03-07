@@ -1,0 +1,227 @@
+/**
+ * Shared icon & color option constants used across settings pages.
+ * Single source of truth for wallet, transaction-category, and task-category forms.
+ */
+
+export interface IconOption {
+  name: string
+  value: string
+}
+
+export interface ColorOption {
+  name: string
+  value: string
+  hex: string
+}
+
+// ─── Emoji Icon Options (super comprehensive) ─────────────────────────
+export const ICON_OPTIONS: IconOption[] = [
+  // 💰 Keuangan & Bisnis
+  { name: 'Uang Kertas', value: '💵' },
+  { name: 'Dompet', value: '💳' },
+  { name: 'Uang Koin', value: '🪙' },
+  { name: 'Bank', value: '🏦' },
+  { name: 'Kantong Uang', value: '💰' },
+  { name: 'Grafik Naik', value: '📈' },
+  { name: 'Grafik Turun', value: '📉' },
+  { name: 'Kalkulator', value: '🧮' },
+  { name: 'Kwitansi', value: '🧾' },
+  { name: 'Brankas', value: '🧰' },
+  { name: 'Berlian', value: '💎' },
+  { name: 'Amplop', value: '💌' },
+
+  // 🍔 Makanan & Minuman
+  { name: 'Burger', value: '🍔' },
+  { name: 'Pizza', value: '🍕' },
+  { name: 'Nasi', value: '🍚' },
+  { name: 'Ramen', value: '🍜' },
+  { name: 'Sushi', value: '🍣' },
+  { name: 'Salad', value: '🥗' },
+  { name: 'Roti', value: '🍞' },
+  { name: 'Kue', value: '🎂' },
+  { name: 'Es Krim', value: '🍦' },
+  { name: 'Buah', value: '🍎' },
+  { name: 'Sayur', value: '🥦' },
+  { name: 'Daging', value: '🥩' },
+  { name: 'Piring', value: '🍽️' },
+  { name: 'Kopi', value: '☕' },
+  { name: 'Teh', value: '🍵' },
+  { name: 'Jus', value: '🧃' },
+  { name: 'Susu', value: '🥛' },
+  { name: 'Bir', value: '🍺' },
+  { name: 'Wine', value: '🍷' },
+  { name: 'Botol Air', value: '💧' },
+
+  // 🚗 Transportasi
+  { name: 'Mobil', value: '🚗' },
+  { name: 'Motor', value: '🏍️' },
+  { name: 'Bus', value: '🚌' },
+  { name: 'Kereta', value: '🚆' },
+  { name: 'Pesawat', value: '✈️' },
+  { name: 'Kapal', value: '🚢' },
+  { name: 'Sepeda', value: '🚲' },
+  { name: 'Taksi', value: '🚕' },
+  { name: 'Bensin', value: '⛽' },
+  { name: 'Parkir', value: '🅿️' },
+
+  // 🏠 Rumah & Properti
+  { name: 'Rumah', value: '🏠' },
+  { name: 'Apartemen', value: '🏢' },
+  { name: 'Gedung', value: '🏗️' },
+  { name: 'Kunci', value: '🔑' },
+  { name: 'Sofa', value: '🛋️' },
+  { name: 'Tempat Tidur', value: '🛏️' },
+  { name: 'Shower', value: '🚿' },
+  { name: 'Lampu', value: '💡' },
+  { name: 'Listrik', value: '⚡' },
+  { name: 'Api', value: '🔥' },
+
+  // 🛍️ Belanja & Fashion
+  { name: 'Belanja', value: '🛍️' },
+  { name: 'Keranjang', value: '🛒' },
+  { name: 'Baju', value: '👕' },
+  { name: 'Celana', value: '👖' },
+  { name: 'Gaun', value: '👗' },
+  { name: 'Sepatu', value: '👟' },
+  { name: 'Topi', value: '🧢' },
+  { name: 'Kacamata', value: '👓' },
+  { name: 'Jam Tangan', value: '⌚' },
+  { name: 'Tas', value: '👜' },
+  { name: 'Cincin', value: '💍' },
+  { name: 'Parfum', value: '🧴' },
+
+  // 💊 Kesehatan
+  { name: 'Obat', value: '💊' },
+  { name: 'Rumah Sakit', value: '🏥' },
+  { name: 'Stetoskop', value: '🩺' },
+  { name: 'Suntik', value: '💉' },
+  { name: 'Perban', value: '🩹' },
+  { name: 'Hati', value: '❤️' },
+  { name: 'Gigi', value: '🦷' },
+  { name: 'Mata', value: '👁️' },
+  { name: 'Ambulans', value: '🚑' },
+
+  // 🎒 Pendidikan & Kerja
+  { name: 'Ransel', value: '🎒' },
+  { name: 'Buku', value: '📖' },
+  { name: 'Pena', value: '✏️' },
+  { name: 'Graduation', value: '🎓' },
+  { name: 'Sekolah', value: '🏫' },
+  { name: 'Kerja', value: '💼' },
+  { name: 'Meeting', value: '🤝' },
+  { name: 'Presentasi', value: '📊' },
+  { name: 'Dokumen', value: '📄' },
+  { name: 'Folder', value: '📁' },
+  { name: 'Email', value: '📧' },
+  { name: 'Kalender', value: '📅' },
+  { name: 'Jam', value: '⏰' },
+  { name: 'Bel', value: '🔔' },
+  { name: 'Memo', value: '📝' },
+  { name: 'Clipboard', value: '📋' },
+  { name: 'Pin', value: '📌' },
+  { name: 'Link', value: '🔗' },
+
+  // 💻 Teknologi
+  { name: 'Laptop', value: '💻' },
+  { name: 'HP', value: '📱' },
+  { name: 'Desktop', value: '🖥️' },
+  { name: 'Keyboard', value: '⌨️' },
+  { name: 'Printer', value: '🖨️' },
+  { name: 'Kamera', value: '📷' },
+  { name: 'Video', value: '📹' },
+  { name: 'Headphone', value: '🎧' },
+  { name: 'Mikrofon', value: '🎤' },
+  { name: 'WiFi', value: '📶' },
+  { name: 'Baterai', value: '🔋' },
+  { name: 'USB', value: '🔌' },
+  { name: 'Robot', value: '🤖' },
+  { name: 'Globe', value: '🌐' },
+
+  // 🎬 Hiburan & Hobi
+  { name: 'Film', value: '🎬' },
+  { name: 'Musik', value: '🎵' },
+  { name: 'Game', value: '🎮' },
+  { name: 'TV', value: '📺' },
+  { name: 'Dadu', value: '🎲' },
+  { name: 'Puzzle', value: '🧩' },
+  { name: 'Seni', value: '🎨' },
+  { name: 'Foto', value: '🖼️' },
+  { name: 'Bola', value: '⚽' },
+  { name: 'Basket', value: '🏀' },
+  { name: 'Tenis', value: '🎾' },
+  { name: 'Badminton', value: '🏸' },
+  { name: 'Renang', value: '🏊' },
+  { name: 'Gym', value: '🏋️' },
+  { name: 'Yoga', value: '🧘' },
+  { name: 'Lari', value: '🏃' },
+  { name: 'Gunung', value: '⛰️' },
+  { name: 'Pantai', value: '🏖️' },
+  { name: 'Camping', value: '🏕️' },
+  { name: 'Memancing', value: '🎣' },
+  { name: 'Berkebun', value: '🌱' },
+
+  // 🐾 Hewan & Peliharaan
+  { name: 'Anjing', value: '🐕' },
+  { name: 'Kucing', value: '🐈' },
+  { name: 'Ikan', value: '🐟' },
+  { name: 'Burung', value: '🐦' },
+  { name: 'Kelinci', value: '🐰' },
+  { name: 'Paw', value: '🐾' },
+
+  // 🎁 Sosial & Lainnya
+  { name: 'Hadiah', value: '🎁' },
+  { name: 'Pesta', value: '🎉' },
+  { name: 'Balon', value: '🎈' },
+  { name: 'Kencan', value: '💕' },
+  { name: 'Keluarga', value: '👨‍👩‍👧‍👦' },
+  { name: 'Baby', value: '👶' },
+  { name: 'Doa', value: '🙏' },
+  { name: 'Masjid', value: '🕌' },
+  { name: 'Gereja', value: '⛪' },
+  { name: 'Donasi', value: '🤲' },
+  { name: 'Bintang', value: '⭐' },
+  { name: 'Medali', value: '🏅' },
+  { name: 'Trofi', value: '🏆' },
+  { name: 'Bendera', value: '🚩' },
+  { name: 'Perisai', value: '🛡️' },
+  { name: 'Kunci Gembok', value: '🔒' },
+  { name: 'Ceklis', value: '✅' },
+  { name: 'Target', value: '🎯' },
+  { name: 'Roket', value: '🚀' },
+  { name: 'Payung', value: '☂️' },
+  { name: 'Kotak', value: '📦' },
+  { name: 'Klip', value: '📎' },
+  { name: 'Tag', value: '🏷️' },
+  { name: 'Love', value: '❤️' },
+  { name: 'Peace', value: '✌️' },
+  { name: 'Thumbs Up', value: '👍' },
+  { name: 'Smile', value: '😊' },
+  { name: 'Cool', value: '😎' },
+  { name: 'Thinking', value: '🤔' },
+  { name: 'Skull', value: '💀' },
+  { name: 'Pelangi', value: '🌈' },
+  { name: 'Matahari', value: '☀️' },
+  { name: 'Bulan', value: '🌙' },
+  { name: 'Awan', value: '☁️' },
+  { name: 'Hujan', value: '🌧️' },
+  { name: 'Salju', value: '❄️' },
+]
+
+// ─── Color Options ────────────────────────────────────────────────────
+export const COLOR_OPTIONS: ColorOption[] = [
+  { name: 'Neutral', value: 'neutral', hex: '#64748b' },
+  { name: 'Red', value: 'red', hex: '#ef4444' },
+  { name: 'Orange', value: 'orange', hex: '#f97316' },
+  { name: 'Amber', value: 'amber', hex: '#f59e0b' },
+  { name: 'Yellow', value: 'yellow', hex: '#eab308' },
+  { name: 'Green', value: 'green', hex: '#22c55e' },
+  { name: 'Emerald', value: 'emerald', hex: '#10b981' },
+  { name: 'Teal', value: 'teal', hex: '#14b8a6' },
+  { name: 'Cyan', value: 'cyan', hex: '#06b6d4' },
+  { name: 'Sky', value: 'sky', hex: '#0ea5e9' },
+  { name: 'Blue', value: 'blue', hex: '#3b82f6' },
+  { name: 'Indigo', value: 'indigo', hex: '#6366f1' },
+  { name: 'Violet', value: 'violet', hex: '#8b5cf6' },
+  { name: 'Purple', value: 'purple', hex: '#a855f7' },
+  { name: 'Pink', value: 'pink', hex: '#ec4899' },
+]

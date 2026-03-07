@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ICON_OPTIONS, COLOR_OPTIONS } from '~/utils/options'
 import type { TaskCategory } from '~/types/database.types'
 
 const toast = useAppToast()
@@ -16,38 +17,8 @@ const formState = ref({
 })
 
 // Options for Icons and Colors
-const iconOptions = [
-    { name: 'Kerja', value: '💼' },
-    { name: 'Rumah', value: '🏠' },
-    { name: 'Belajar', value: '🎓' },
-    { name: 'Ide', value: '💡' },
-    { name: 'Teknologi', value: '💻' },
-    { name: 'Keuangan', value: '💰' },
-    { name: 'Buku', value: '📖' },
-    { name: 'Kesehatan', value: '❤️' },
-    { name: 'Hiburan', value: '🎮' },
-    { name: 'Belanja', value: '🛒' },
-    { name: 'Liburan', value: '✈️' },
-    { name: 'Olahraga', value: '🏋️' }
-]
-
-const colorOptions = [
-    { name: 'Neutral', value: 'neutral', hex: '#64748b' },
-    { name: 'Red', value: 'red', hex: '#ef4444' },
-    { name: 'Orange', value: 'orange', hex: '#f97316' },
-    { name: 'Amber', value: 'amber', hex: '#f59e0b' },
-    { name: 'Yellow', value: 'yellow', hex: '#eab308' },
-    { name: 'Green', value: 'green', hex: '#22c55e' },
-    { name: 'Emerald', value: 'emerald', hex: '#10b981' },
-    { name: 'Teal', value: 'teal', hex: '#14b8a6' },
-    { name: 'Cyan', value: 'cyan', hex: '#06b6d4' },
-    { name: 'Sky', value: 'sky', hex: '#0ea5e9' },
-    { name: 'Blue', value: 'blue', hex: '#3b82f6' },
-    { name: 'Indigo', value: 'indigo', hex: '#6366f1' },
-    { name: 'Violet', value: 'violet', hex: '#8b5cf6' },
-    { name: 'Purple', value: 'purple', hex: '#a855f7' },
-    { name: 'Pink', value: 'pink', hex: '#ec4899' }
-]
+const iconOptions = ICON_OPTIONS
+const colorOptions = COLOR_OPTIONS
 
 const openCreateModal = () => {
     modalMode.value = 'create'
@@ -181,6 +152,7 @@ const getSelectedIconOption = computed(() => iconOptions.find(i => i.value === f
                                 value-key="value" 
                                 label-key="name"
                                 class="w-full"
+                                searchable
                                 :ui="{ content: 'min-w-[var(--reka-popper-anchor-width)]' }"
                             >
                                 <template #leading>

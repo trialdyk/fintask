@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ICON_OPTIONS, COLOR_OPTIONS } from '~/utils/options'
 import type { TransactionCategory, TransactionSubcategory } from '~/types/database.types'
 
 const toast = useAppToast()
@@ -31,41 +32,8 @@ const subForm = ref({
 })
 
 // Options
-const iconOptions = [
-    { name: 'Makan', value: '🍔' },
-    { name: 'Minum', value: '☕' },
-    { name: 'Transport', value: '🚗' },
-    { name: 'Kesehatan', value: '💊' },
-    { name: 'Belanja', value: '🛍️' },
-    { name: 'Tagihan', value: '🧾' },
-    { name: 'Pendidikan', value: '🎒' },
-    { name: 'Hiburan', value: '🎬' },
-    { name: 'Gaji', value: '💵' },
-    { name: 'Investasi', value: '📈' },
-    { name: 'Olahraga', value: '🏋️' },
-    { name: 'Kencan', value: '❤️' },
-    { name: 'Teknologi', value: '💻' },
-    { name: 'Game', value: '🎮' },
-    { name: 'Lainnya', value: '📦' }
-]
-
-const colorOptions = [
-    { name: 'Neutral', value: 'neutral', hex: '#64748b' },
-    { name: 'Red', value: 'red', hex: '#ef4444' },
-    { name: 'Orange', value: 'orange', hex: '#f97316' },
-    { name: 'Amber', value: 'amber', hex: '#f59e0b' },
-    { name: 'Yellow', value: 'yellow', hex: '#eab308' },
-    { name: 'Green', value: 'green', hex: '#22c55e' },
-    { name: 'Emerald', value: 'emerald', hex: '#10b981' },
-    { name: 'Teal', value: 'teal', hex: '#14b8a6' },
-    { name: 'Cyan', value: 'cyan', hex: '#06b6d4' },
-    { name: 'Sky', value: 'sky', hex: '#0ea5e9' },
-    { name: 'Blue', value: 'blue', hex: '#3b82f6' },
-    { name: 'Indigo', value: 'indigo', hex: '#6366f1' },
-    { name: 'Violet', value: 'violet', hex: '#8b5cf6' },
-    { name: 'Purple', value: 'purple', hex: '#a855f7' },
-    { name: 'Pink', value: 'pink', hex: '#ec4899' }
-]
+const iconOptions = ICON_OPTIONS
+const colorOptions = COLOR_OPTIONS
 
 // Derived Data
 const filteredCategories = computed(() =>
@@ -319,7 +287,7 @@ const getSubIconOption = computed(() => iconOptions.find(i => i.value === subFor
 
                     <div class="grid grid-cols-2 gap-4">
                         <UFormField class="w-full" label="Ikon" name="icon">
-                            <USelectMenu class="w-full" v-model="categoryForm.icon" :items="iconOptions" value-key="value" label-key="name">
+                            <USelectMenu class="w-full" v-model="categoryForm.icon" :items="iconOptions" value-key="value" label-key="name" searchable>
                                 <template #leading><span class="text-lg w-5 h-5 flex items-center justify-center">{{ getCategoryIconOption ? getCategoryIconOption.value : '' }}</span></template>
                                 <template #item-leading="{ item }"><span class="text-lg w-5 h-5 flex items-center justify-center">{{ item ? item.value : '' }}</span></template>
                             </USelectMenu>
@@ -351,7 +319,7 @@ const getSubIconOption = computed(() => iconOptions.find(i => i.value === subFor
                     </UFormField>
 
                     <UFormField class="w-full" label="Ikon" name="icon">
-                        <USelectMenu class="w-full" v-model="subForm.icon" :items="iconOptions" value-key="value" label-key="name">
+                        <USelectMenu class="w-full" v-model="subForm.icon" :items="iconOptions" value-key="value" label-key="name" searchable>
                             <template #leading><span class="text-lg w-5 h-5 flex items-center justify-center">{{ getSubIconOption ? getSubIconOption.value : '' }}</span></template>
                             <template #item-leading="{ item }"><span class="text-lg w-5 h-5 flex items-center justify-center">{{ item ? item.value : '' }}</span></template>
                         </USelectMenu>
