@@ -8,41 +8,67 @@ export default defineEventHandler(async (event) => {
   // Fetch transaction first to know the amount & type for balance correction
   const { data: tx, error: fetchErr } = await supabase
     .from('transactions')
-    .select('amount, type, wallet_id')
+    .select('id, amount, type, wallet_id, linked_transaction_id')
     .eq('id', Number(id))
     .eq('user_id', user.id)
     .single()
 
   if (fetchErr || !tx) throw createError({ status: 404, statusText: 'Transaksi tidak ditemukan' })
 
-  // Delete the transaction
+  // Find linked transaction if any
+  let linkedTx = null
+  if (tx.linked_transaction_id) {
+    const { data: ltx } = await supabase
+      .from('transactions')
+      .select('id, amount, type, wallet_id')
+      .eq('id', tx.linked_transaction_id)
+      .eq('user_id', user.id)
+      .single()
+    linkedTx = ltx
+  }
+
+  // Delete the transaction(s)
+  const idsToDelete = [tx.id]
+  if (linkedTx) idsToDelete.push(linkedTx.id)
+
   const { error } = await supabase
     .from('transactions')
     .delete()
-    .eq('id', Number(id))
+    .in('id', idsToDelete)
     .eq('user_id', user.id)
 
   if (error) throw createError({ status: 400, statusText: error.message })
 
   // ─── Reverse the wallet balance adjustment ──────────────────────────
-  // If it was an expense, add the amount back. If income, subtract it back.
-  const reverseDelta = tx.type === 'expense' ? tx.amount : tx.type === 'income' ? -tx.amount : 0
+  const reverseBalance = async (transaction: { type: string; amount: number; wallet_id: number }) => {
+    // If it was an expense or transfer, we ADD back. If income, we SUBTRACT back.
+    const reverseDelta = transaction.type === 'expense' || transaction.type === 'transfer' 
+      ? transaction.amount 
+      : transaction.type === 'income' 
+      ? -transaction.amount 
+      : 0
 
-  if (reverseDelta !== 0) {
-    const { data: wallet } = await supabase
-      .from('wallets')
-      .select('balance')
-      .eq('id', tx.wallet_id)
-      .eq('user_id', user.id)
-      .single()
-
-    if (wallet) {
-      await supabase
+    if (reverseDelta !== 0) {
+      const { data: wallet } = await supabase
         .from('wallets')
-        .update({ balance: wallet.balance + reverseDelta })
-        .eq('id', tx.wallet_id)
+        .select('balance')
+        .eq('id', transaction.wallet_id)
         .eq('user_id', user.id)
+        .single()
+
+      if (wallet) {
+        await supabase
+          .from('wallets')
+          .update({ balance: wallet.balance + reverseDelta })
+          .eq('id', transaction.wallet_id)
+          .eq('user_id', user.id)
+      }
     }
+  }
+
+  await reverseBalance(tx)
+  if (linkedTx) {
+    await reverseBalance(linkedTx)
   }
 
   return { success: true }

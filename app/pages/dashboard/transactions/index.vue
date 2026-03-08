@@ -86,8 +86,9 @@ const handleSave = async () => {
             category_id: formState.value.categoryId || null,
             subcategory_id: formState.value.subCategoryId || null,
             notes: formState.value.notes || null,
-            tags: []
-        })
+            tags: [],
+            ...(formState.value.type === 'transfer' && formState.value.toWalletId ? { to_wallet_id: formState.value.toWalletId } : {})
+        } as any)
         toast.success('Berhasil', 'Transaksi ditambahkan')
         isSlideoverOpen.value = false
         await walletsStore.refresh()
@@ -252,7 +253,7 @@ const groupedTransactions = computed(() => {
                                     <p class="text-sm font-semibold text-gray-900 dark:text-white break-words pr-8 sm:pr-0 leading-tight mt-0.5 sm:mt-0">
                                         {{ tx.title }} 
                                         <span v-if="tx.type === 'transfer'" class="font-normal text-gray-500">
-                                            (ke {{ getWallet(transactionsStore.items.find(t => t.linked_transaction_id === tx.linked_transaction_id && t.id !== tx.id)?.wallet_id)?.name }})
+                                            (ke {{ getWallet(transactionsStore.items.find(t => t.id === tx.linked_transaction_id)?.wallet_id)?.name }})
                                         </span>
                                     </p>
                                     

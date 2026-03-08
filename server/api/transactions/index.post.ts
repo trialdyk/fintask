@@ -11,6 +11,7 @@ const schema = z.object({
   notes: z.string().nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
   timestamp: z.string().optional(),
+  to_wallet_id: z.number().optional(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -31,11 +32,10 @@ export default defineEventHandler(async (event) => {
 
   if (error) throw createError({ status: 400, statusText: error.message })
 
-  // ─── Adjust wallet balance ──────────────────────────────────────────
-  const delta = body.type === 'expense' ? -body.amount : body.type === 'income' ? body.amount : 0
+  // Update fromWallet balance (for expense/income/transfer-out)
+  const delta = body.type === 'expense' ? -body.amount : body.type === 'income' ? body.amount : body.type === 'transfer' ? -body.amount : 0
 
   if (delta !== 0) {
-    // Fetch current balance then update
     const { data: wallet } = await supabase
       .from('wallets')
       .select('balance')
@@ -48,6 +48,49 @@ export default defineEventHandler(async (event) => {
         .from('wallets')
         .update({ balance: wallet.balance + delta })
         .eq('id', body.wallet_id)
+        .eq('user_id', user.id)
+    }
+  }
+
+  // Handle transfer specifics
+  if (body.type === 'transfer' && body.to_wallet_id) {
+    // Insert linked income transaction
+    const { data: incData, error: incError } = await supabase
+      .from('transactions')
+      .insert({
+        title: body.title,
+        type: 'income',
+        amount: body.amount,
+        wallet_id: body.to_wallet_id,
+        user_id: user.id,
+        timestamp: body.timestamp || new Date().toISOString(),
+        notes: body.notes || 'Transfer masuk',
+        linked_transaction_id: data.id,
+      })
+      .select()
+      .single()
+
+    if (incError) throw createError({ status: 500, statusText: 'Transfer destination creation failed' })
+
+    // Link original transfer back to the income tx
+    await supabase
+      .from('transactions')
+      .update({ linked_transaction_id: incData.id })
+      .eq('id', data.id)
+
+    // Update toWallet balance
+    const { data: toWallet } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('id', body.to_wallet_id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (toWallet) {
+      await supabase
+        .from('wallets')
+        .update({ balance: toWallet.balance + body.amount })
+        .eq('id', body.to_wallet_id)
         .eq('user_id', user.id)
     }
   }
