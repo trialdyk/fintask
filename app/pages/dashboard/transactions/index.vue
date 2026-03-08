@@ -91,6 +91,7 @@ const handleSave = async () => {
         } as any)
         toast.success('Berhasil', 'Transaksi ditambahkan')
         isSlideoverOpen.value = false
+        await transactionsStore.refresh()
         await walletsStore.refresh()
     } catch (e: any) {
         toast.error('Gagal', e.data?.statusMessage || e.message)

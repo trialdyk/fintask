@@ -283,6 +283,9 @@ const hasActiveFilters = computed(() =>
             </td>
             <td class="px-4 py-3 text-gray-900 dark:text-white font-medium max-w-[200px] truncate">
               {{ tx.title }}
+              <span v-if="tx.type === 'transfer' && tx.linked_transaction_id" class="font-normal text-gray-500 text-xs ml-1">
+                 (ke {{ getWalletName(transactionsStore.items.find((t: any) => t.id === tx.linked_transaction_id)?.wallet_id || 0) }})
+              </span>
               <p v-if="tx.notes" class="text-xs text-gray-400 truncate mt-0.5">{{ tx.notes }}</p>
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
