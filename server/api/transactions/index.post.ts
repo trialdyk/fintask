@@ -19,11 +19,14 @@ export default defineEventHandler(async (event) => {
   const supabase = await getSupabase(event)
   const body = await readValidatedBody(event, schema.parse)
 
+  // Remove to_wallet_id so we don't send unknown column to supabase
+  const { to_wallet_id, ...txBody } = body
+
   // Insert transaction
   const { data, error } = await supabase
     .from('transactions')
     .insert({
-      ...body,
+      ...txBody,
       user_id: user.id,
       timestamp: body.timestamp || new Date().toISOString(),
     })
