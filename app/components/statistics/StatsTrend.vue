@@ -17,7 +17,8 @@ const monthlyTrend = computed(() => {
     const label = `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
     if (!map.has(key)) map.set(key, { income: 0, expense: 0, label })
     const entry = map.get(key)!
-    if (tx.type === 'income') entry.income += tx.amount
+    // Skip income transactions that are linked from transfers
+    if (tx.type === 'income' && !tx.linked_transaction_id) entry.income += tx.amount
     else if (tx.type === 'expense') entry.expense += tx.amount
   })
 

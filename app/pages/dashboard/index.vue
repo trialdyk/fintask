@@ -29,7 +29,7 @@ const thisMonthTransactions = computed(() => {
 
 const monthlyIncome = computed(() =>
   thisMonthTransactions.value
-    .filter(tx => tx.type === 'income')
+    .filter(tx => tx.type === 'income' && !tx.linked_transaction_id)
     .reduce((sum, tx) => sum + tx.amount, 0)
 )
 
