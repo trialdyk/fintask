@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatCurrency, convertToIDR } from '~/utils/currency'
+import { isRealIncome } from '~/composables/useInsights'
 
 useHead({ title: 'Dashboard' })
 
@@ -29,7 +30,7 @@ const thisMonthTransactions = computed(() => {
 
 const monthlyIncome = computed(() =>
   thisMonthTransactions.value
-    .filter(tx => tx.type === 'income' && !tx.linked_transaction_id)
+    .filter(isRealIncome)
     .reduce((sum, tx) => sum + tx.amount, 0)
 )
 
