@@ -15,26 +15,33 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   const loading = ref(false)
   const fetched = ref(false)
+  let fetchPromise: Promise<void> | null = null
 
   // ─── Fetch All ────────────────────────────────────────────────────
   async function fetchAll() {
     if (fetched.value) return
-    loading.value = true
-    try {
-      const [txData, taskData] = await Promise.all([
-        $fetch<{ categories: TransactionCategory[]; subcategories: TransactionSubcategory[] }>('/api/categories/transactions'),
-        $fetch<TaskCategory[]>('/api/categories/tasks'),
-      ])
-      txCategories.value = txData.categories
-      txSubcategories.value = txData.subcategories
-      taskCategories.value = taskData
-      fetched.value = true
-    } finally {
-      loading.value = false
-    }
+    if (fetchPromise) return fetchPromise
+    fetchPromise = (async () => {
+      loading.value = true
+      try {
+        const [txData, taskData] = await Promise.all([
+          $fetch<{ categories: TransactionCategory[]; subcategories: TransactionSubcategory[] }>('/api/categories/transactions'),
+          $fetch<TaskCategory[]>('/api/categories/tasks'),
+        ])
+        txCategories.value = txData.categories
+        txSubcategories.value = txData.subcategories
+        taskCategories.value = taskData
+        fetched.value = true
+      } finally {
+        loading.value = false
+        fetchPromise = null
+      }
+    })()
+    return fetchPromise
   }
 
   async function refresh() {
+    fetchPromise = null
     fetched.value = false
     await fetchAll()
   }

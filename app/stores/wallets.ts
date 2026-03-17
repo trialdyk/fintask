@@ -5,19 +5,26 @@ export const useWalletsStore = defineStore('wallets', () => {
   const items = ref<Wallet[]>([])
   const loading = ref(false)
   const fetched = ref(false)
+  let fetchPromise: Promise<void> | null = null
 
   async function fetchAll() {
     if (fetched.value) return
-    loading.value = true
-    try {
-      items.value = await $fetch<Wallet[]>('/api/wallets')
-      fetched.value = true
-    } finally {
-      loading.value = false
-    }
+    if (fetchPromise) return fetchPromise
+    fetchPromise = (async () => {
+      loading.value = true
+      try {
+        items.value = await $fetch<Wallet[]>('/api/wallets')
+        fetched.value = true
+      } finally {
+        loading.value = false
+        fetchPromise = null
+      }
+    })()
+    return fetchPromise
   }
 
   async function refresh() {
+    fetchPromise = null
     fetched.value = false
     await fetchAll()
   }

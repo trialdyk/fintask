@@ -57,44 +57,68 @@ export default defineEventHandler(async (event) => {
 
   // Handle transfer specifics
   if (body.type === 'transfer' && body.to_wallet_id) {
-    // Insert linked income transaction
-    const { data: incData, error: incError } = await supabase
-      .from('transactions')
-      .insert({
-        title: body.title,
-        type: 'income',
-        amount: body.amount,
-        wallet_id: body.to_wallet_id,
-        user_id: user.id,
-        timestamp: body.timestamp || new Date().toISOString(),
-        notes: body.notes || 'Transfer masuk',
-        linked_transaction_id: data.id,
-      })
-      .select()
-      .single()
+    let incData: { id: number } | null = null
 
-    if (incError) throw createError({ status: 500, statusText: 'Transfer destination creation failed' })
+    try {
+      // Insert linked income transaction
+      const { data: inc, error: incError } = await supabase
+        .from('transactions')
+        .insert({
+          title: body.title,
+          type: 'income',
+          amount: body.amount,
+          wallet_id: body.to_wallet_id,
+          user_id: user.id,
+          timestamp: body.timestamp || new Date().toISOString(),
+          notes: body.notes || 'Transfer masuk',
+          linked_transaction_id: data.id,
+        })
+        .select()
+        .single()
 
-    // Link original transfer back to the income tx
-    await supabase
-      .from('transactions')
-      .update({ linked_transaction_id: incData.id })
-      .eq('id', data.id)
+      if (incError) throw incError
+      incData = inc
 
-    // Update toWallet balance
-    const { data: toWallet } = await supabase
-      .from('wallets')
-      .select('balance')
-      .eq('id', body.to_wallet_id)
-      .eq('user_id', user.id)
-      .single()
+      // Link original transfer back to the income tx
+      const { error: linkError } = await supabase
+        .from('transactions')
+        .update({ linked_transaction_id: incData.id })
+        .eq('id', data.id)
 
-    if (toWallet) {
-      await supabase
+      if (linkError) throw linkError
+
+      // Update toWallet balance
+      const { data: toWallet } = await supabase
         .from('wallets')
-        .update({ balance: toWallet.balance + body.amount })
+        .select('balance')
         .eq('id', body.to_wallet_id)
         .eq('user_id', user.id)
+        .single()
+
+      if (toWallet) {
+        await supabase
+          .from('wallets')
+          .update({ balance: toWallet.balance + body.amount })
+          .eq('id', body.to_wallet_id)
+          .eq('user_id', user.id)
+      }
+    } catch {
+      // Compensate: delete created transaction(s) and reverse fromWallet balance
+      const idsToDelete = [data.id, ...(incData ? [incData.id] : [])]
+      await supabase.from('transactions').delete().in('id', idsToDelete).eq('user_id', user.id)
+
+      if (delta !== 0) {
+        const { data: wallet } = await supabase
+          .from('wallets').select('balance')
+          .eq('id', body.wallet_id).eq('user_id', user.id).single()
+        if (wallet) {
+          await supabase.from('wallets')
+            .update({ balance: wallet.balance - delta })
+            .eq('id', body.wallet_id).eq('user_id', user.id)
+        }
+      }
+
+      throw createError({ status: 500, statusText: 'Gagal memproses transfer, silakan coba lagi' })
     }
   }
 

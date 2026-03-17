@@ -66,10 +66,10 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  await reverseBalance(tx)
-  if (linkedTx) {
-    await reverseBalance(linkedTx)
-  }
+  await Promise.all([
+    reverseBalance(tx),
+    ...(linkedTx ? [reverseBalance(linkedTx)] : []),
+  ])
 
   return { success: true }
 })

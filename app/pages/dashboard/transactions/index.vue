@@ -87,8 +87,8 @@ const handleSave = async () => {
             subcategory_id: formState.value.subCategoryId || null,
             notes: formState.value.notes || null,
             tags: [],
-            ...(formState.value.type === 'transfer' && formState.value.toWalletId ? { to_wallet_id: formState.value.toWalletId } : {})
-        } as any)
+            to_wallet_id: formState.value.type === 'transfer' ? formState.value.toWalletId : undefined,
+        })
         toast.success('Berhasil', 'Transaksi ditambahkan')
         isSlideoverOpen.value = false
         await transactionsStore.refresh()
@@ -150,24 +150,40 @@ const formatDateSubHeader = (dateStr: string) => {
     return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-const groupedTransactions = computed(() => {
+const PAGE_SIZE = 10
+const visibleDays = ref(PAGE_SIZE)
+
+const allGroupedTransactions = computed(() => {
     const visibleTxs = transactionsStore.items.filter(tx => {
-        if (tx.type === 'income' && tx.linked_transaction_id) return false 
+        if (tx.type === 'income' && tx.linked_transaction_id) return false
         return true
     })
 
     const sortedTxs = [...visibleTxs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     const grouped: Record<string, typeof visibleTxs> = {}
-    
+
     sortedTxs.forEach(tx => {
         const d = new Date(tx.timestamp)
         const dateKey = getLocalDateString(d)
         if (!grouped[dateKey]) grouped[dateKey] = []
         grouped[dateKey].push(tx)
     })
-    
+
     return grouped
 })
+
+const groupedTransactions = computed(() => {
+    const entries = Object.entries(allGroupedTransactions.value)
+    return Object.fromEntries(entries.slice(0, visibleDays.value))
+})
+
+const hasMoreDays = computed(() =>
+    Object.keys(allGroupedTransactions.value).length > visibleDays.value
+)
+
+function loadMore() {
+    visibleDays.value += PAGE_SIZE
+}
 
 </script>
 
@@ -219,7 +235,7 @@ const groupedTransactions = computed(() => {
 
         <!-- Transaction List -->
         <div v-else class="space-y-8 pb-12">
-            <div v-for="(txs, dateKey) in groupedTransactions" :key="dateKey">
+            <div v-for="(txs, dateKey) in groupedTransactions" :key="(dateKey as string)">
                 <!-- Date Header -->
                 <div class="sticky top-0 z-10 bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm py-2 px-1 mb-2 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ formatDateHeader(dateKey) }}</h3>
@@ -298,6 +314,13 @@ const groupedTransactions = computed(() => {
                         </div>
                     </div>
                 </UCard>
+            </div>
+
+            <!-- Load More -->
+            <div v-if="hasMoreDays" class="flex justify-center pt-2">
+                <UButton variant="soft" color="neutral" @click="loadMore" trailing-icon="i-heroicons-chevron-down">
+                    Muat lebih banyak
+                </UButton>
             </div>
         </div>
 
