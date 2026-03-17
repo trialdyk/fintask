@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Transaction } from '~/types/database.types'
+import { isRealIncome } from '~/composables/useInsights'
 
 const { formatCompact, getHexColor } = useHelpers()
 
@@ -17,8 +18,7 @@ const monthlyTrend = computed(() => {
     const label = `${months[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
     if (!map.has(key)) map.set(key, { income: 0, expense: 0, label })
     const entry = map.get(key)!
-    // Skip income transactions that are linked from transfers
-    if (tx.type === 'income' && !tx.linked_transaction_id) entry.income += tx.amount
+    if (isRealIncome(tx)) entry.income += tx.amount
     else if (tx.type === 'expense') entry.expense += tx.amount
   })
 
