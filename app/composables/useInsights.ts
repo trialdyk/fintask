@@ -84,6 +84,11 @@ export function buildMonthRange(year: number, month: number): MonthRange {
   }
 }
 
+/** True for income transactions that are NOT linked from a transfer */
+export function isRealIncome(tx: Transaction): boolean {
+  return tx.type === 'income' && !tx.linked_transaction_id
+}
+
 /** Filter transactions within a date range */
 export function filterTxByRange(txs: Transaction[], range: MonthRange): Transaction[] {
   return txs.filter(tx => {
@@ -96,8 +101,7 @@ export function filterTxByRange(txs: Transaction[], range: MonthRange): Transact
 export function computeTotals(txs: Transaction[]): PeriodTotals {
   let income = 0, expense = 0
   for (const tx of txs) {
-    // Skip income transactions that are linked from transfers
-    if (tx.type === 'income' && !tx.linked_transaction_id) income += tx.amount
+    if (isRealIncome(tx)) income += tx.amount
     else if (tx.type === 'expense') expense += tx.amount
   }
   return { income, expense, net: income - expense, txCount: txs.length }
@@ -148,9 +152,8 @@ export function useInsights() {
     categories: TransactionCategory[],
     subcategories: TransactionSubcategory[]
   ): CategoryStat[] {
-    // Skip income transactions that are linked from transfers
-    const filtered = txs.filter(tx => tx.type === type && !(tx.type === 'income' && tx.linked_transaction_id))
-    const prevFiltered = prevTxs.filter(tx => tx.type === type && !(tx.type === 'income' && tx.linked_transaction_id))
+    const filtered = txs.filter(tx => tx.type === type && (type !== 'income' || !tx.linked_transaction_id))
+    const prevFiltered = prevTxs.filter(tx => tx.type === type && (type !== 'income' || !tx.linked_transaction_id))
     const total = filtered.reduce((s, tx) => s + tx.amount, 0)
 
     // Group by category
@@ -241,10 +244,9 @@ export function useInsights() {
       const wTxs = txs.filter(tx => tx.wallet_id === w.id)
       const prevWTxs = prevTxs.filter(tx => tx.wallet_id === w.id)
 
-      // Skip income transactions that are linked from transfers
-      const income = wTxs.filter(tx => tx.type === 'income' && !tx.linked_transaction_id).reduce((s, tx) => s + tx.amount, 0)
+      const income = wTxs.filter(isRealIncome).reduce((s, tx) => s + tx.amount, 0)
       const expense = wTxs.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0)
-      const prevIncome = prevWTxs.filter(tx => tx.type === 'income' && !tx.linked_transaction_id).reduce((s, tx) => s + tx.amount, 0)
+      const prevIncome = prevWTxs.filter(isRealIncome).reduce((s, tx) => s + tx.amount, 0)
       const prevExpense = prevWTxs.filter(tx => tx.type === 'expense').reduce((s, tx) => s + tx.amount, 0)
 
       // Top 5 expense categories
