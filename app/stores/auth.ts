@@ -10,7 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${useRequestURL().origin}/dashboard`,
       },
     })
     if (error) throw error

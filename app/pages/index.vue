@@ -90,11 +90,7 @@ useHead({
   ],
 })
 
-// Redirect if already logged in
-const user = useSupabaseUser()
-watch(user, (val) => {
-  if (val) navigateTo('/dashboard')
-}, { immediate: true })
+// Redirect handled server-side via middleware
 
 const handleLogin = async () => {
   loading.value = true
